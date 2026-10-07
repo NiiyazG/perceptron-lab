@@ -1,0 +1,1903 @@
+<!doctype html>
+<!--
+  Perceptron Lab — интерактивный симулятор машинного обучения
+  © 2026 Гарипов Нияз Варисович. Все права защищены.
+  Лицензия: MIT (см. файл LICENSE).
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Гарипов Нияз Варисович">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Perceptron Lab — интерактивный симулятор машинного обучения</title>
+<style>
+:root{
+  --bg1:#070d18; --bg2:#0b1424;
+  --panel:#0f1a2e; --panel2:#111d33; --soft:#0c1626;
+  --line:rgba(80,140,255,.18); --line2:rgba(80,140,255,.30);
+  --accent:#2f7bff; --accent2:#4aa3ff;
+  --A:#3b9dff; --B:#22d3ee;
+  --ok:#22c55e; --err:#ef4444; --tip:#f5b93d;
+  --ink:#eef3fb; --muted:#9fb0c9; --dim:#6b7c96;
+  --r:17px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0;padding:0}
+body{
+  color:var(--ink); line-height:1.45;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,"Helvetica Neue",Arial,sans-serif;
+  background:
+    radial-gradient(620px 420px at 4% -6%, rgba(47,123,255,.16), transparent 62%),
+    radial-gradient(680px 480px at 100% 0%, rgba(34,211,238,.10), transparent 60%),
+    linear-gradient(160deg, var(--bg1), var(--bg2) 70%);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  min-height:100dvh;
+}
+button{font:inherit;cursor:pointer;color:inherit}
+:focus-visible{outline:3px solid #7fb2ff;outline-offset:2px;border-radius:8px}
+#ansA:focus-visible,#ansB:focus-visible,#checkAnswer:focus-visible{outline:3px solid #7fb2ff;outline-offset:3px}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* page frame: on desktop the app is pinned to the window height so the lesson must really fit */
+.app{
+  max-width:min(96vw,2000px);margin:0 auto;
+  padding:clamp(6px,1.1vh,14px) clamp(10px,1.4vw,18px);
+  display:flex;flex-direction:column;gap:clamp(6px,1vh,14px);
+  min-height:100dvh;
+}
+@media(min-width:1081px) and (min-height:560px){
+  .app{height:100dvh}
+}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:clamp(8px,1.4vw,18px);
+  flex:0 0 auto;
+  min-height:clamp(50px,8vh,88px);padding:clamp(6px,1vh,12px) clamp(10px,1.4vw,18px);margin:0;flex-wrap:wrap;
+  background:linear-gradient(180deg, rgba(17,29,51,.96), rgba(12,22,38,.96));
+  border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 14px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(120,170,255,.10);
+}
+.brandcol{display:flex;align-items:center;gap:12px;min-width:170px}
+.mark{width:clamp(34px,5.4vh,42px);height:clamp(34px,5.4vh,42px);border-radius:12px;flex:none;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 40%, rgba(47,123,255,.30), rgba(12,22,38,.9));
+  border:1px solid var(--line2);box-shadow:0 0 20px rgba(47,123,255,.30)}
+.brand h1{margin:0;font-size:clamp(15px,2.2vh,17px);letter-spacing:-.2px;font-weight:800}
+.brand h1 .lab{color:var(--accent2)}
+.brand p{margin:3px 0 0;font-size:clamp(10px,1.5vh,11.5px);color:var(--muted);line-height:1.25}
+
+.modes{display:flex;gap:6px;background:rgba(7,13,24,.6);border:1px solid var(--line);border-radius:14px;padding:4px}
+.mode{display:flex;align-items:center;gap:9px;min-height:clamp(44px,6.4vh,48px);padding:clamp(5px,0.9vh,7px) clamp(10px,1.4vw,16px);border:1px solid transparent;border-radius:11px;background:transparent;color:var(--muted);text-align:left}
+.mode .mt{font-weight:750;font-size:clamp(12px,1.9vh,13.5px);display:block;line-height:1.15}
+.mode .ms{display:block;font-size:clamp(9.5px,1.4vh,10.5px);color:var(--dim);margin-top:2px}
+.mode[aria-pressed="true"]{color:#fff;border-color:var(--line2);
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 22px rgba(47,123,255,.45)}
+.mode[aria-pressed="true"] .ms{color:rgba(255,255,255,.85)}
+.mode .mi{flex:none;display:grid;place-items:center}
+
+.stepper{display:flex;flex-direction:column;gap:4px;min-width:270px}
+.steptext{font-size:clamp(10.5px,1.5vh,11.5px);color:var(--muted);letter-spacing:.02em}
+.steptext b{color:var(--ink)}
+.steps{list-style:none;display:flex;gap:0;margin:0;padding:0}
+.steps li{display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;flex:1;min-width:64px}
+.steps .dot{width:clamp(22px,3.4vh,26px);height:clamp(22px,3.4vh,26px);border-radius:50%;display:grid;place-items:center;font-size:clamp(11px,1.6vh,12px);font-weight:800;
+  background:var(--soft);color:var(--dim);border:1.5px solid var(--line)}
+.steps li:not(:last-child)::after{content:"";position:absolute;top:clamp(11px,1.7vh,13px);left:calc(50% + 15px);right:calc(-50% + 15px);height:2px;background:var(--line)}
+.steps li.done::after,.steps li.on::after{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.steps li.done .dot{background:var(--accent);color:#fff;border-color:var(--accent)}
+.steps li.on .dot{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:var(--accent2);box-shadow:0 0 16px rgba(47,123,255,.75)}
+.steps li .slabel{font-size:clamp(8.5px,1.3vh,10px);color:var(--dim);text-align:center;max-width:84px;line-height:1.15}
+.steps li.on .slabel{color:var(--ink);font-weight:700}
+.steps li.done .slabel{color:var(--muted)}
+
+.iconbtns{display:flex;gap:8px}
+.iconbtn{width:clamp(44px,5.8vh,46px);height:clamp(44px,5.8vh,46px);border-radius:12px;border:1px solid var(--line);background:rgba(12,22,38,.7);display:grid;place-items:center;color:var(--muted)}
+.iconbtn:hover{border-color:var(--line2);color:var(--ink);box-shadow:0 0 16px rgba(47,123,255,.25)}
+
+/* ---------- layout ---------- */
+.wrap{display:grid;grid-template-columns:minmax(0,19fr) minmax(0,53fr) minmax(0,28fr);gap:clamp(8px,1vw,14px);align-items:stretch;flex:1 1 auto;min-height:0}
+.col{display:flex;flex-direction:column;gap:clamp(5px,0.8vh,13px);min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden}
+.col > .card{flex:0 0 auto}
+.col-center{display:flex;flex-direction:column;min-height:0}
+.col-center > .card{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.col-center > .card.howto-card{flex:0 0 auto}
+.card{background:linear-gradient(180deg, rgba(17,29,51,.92), rgba(12,22,38,.92));border:1px solid var(--line);border-radius:var(--r);padding:clamp(8px,1.2vh,14px);
+  box-shadow:0 12px 30px rgba(0,0,0,.30), inset 0 1px 0 rgba(120,170,255,.07)}
+.card h2,.card h3{margin:0 0 clamp(5px,0.9vh,10px);font-size:clamp(13px,2vh,14.5px);font-weight:750;letter-spacing:-.1px}
+.card h3.sm{font-size:clamp(11px,1.6vh,12px);letter-spacing:.04em;color:var(--muted)}
+
+/* ---------- left: experiments ---------- */
+.exp-list{display:flex;flex-direction:column;gap:clamp(5px,0.8vh,9px)}
+.exp-card{display:flex;align-items:center;gap:11px;width:100%;text-align:left;min-height:clamp(46px,7.4vh,64px);padding:clamp(5px,0.8vh,9px) clamp(8px,0.9vw,11px);
+  background:rgba(7,13,24,.5);border:1px solid var(--line);border-radius:13px;color:var(--ink)}
+.exp-card:hover{border-color:var(--line2)}
+.exp-card .thumb{flex:none;border-radius:9px;display:block;width:clamp(40px,5.6vh,52px);height:auto}
+.exp-card .etxt{min-width:0;flex:1}
+.exp-card .ename{display:block;font-size:clamp(11.5px,1.8vh,13px);font-weight:700}
+.exp-card .edesc{display:block;font-size:clamp(10px,1.5vh,11px);color:var(--muted);margin-top:2px;line-height:1.25}
+.exp-card .chev{flex:none;color:var(--dim);font-weight:800;font-size:15px}
+.exp-card[aria-pressed="true"]{background:linear-gradient(135deg, rgba(47,123,255,.24), rgba(34,211,238,.12));border-color:var(--accent2);box-shadow:0 0 20px rgba(47,123,255,.35), inset 0 0 0 1px rgba(74,163,255,.35)}
+.exp-card[aria-pressed="true"] .chev{color:var(--accent2)}
+.exp-card[aria-pressed="true"] .ename::after{content:" • выбрано";font-size:10px;color:var(--accent2);font-weight:700}
+
+/* tools */
+.tool-list{display:flex;flex-direction:column;gap:7px}
+.tool{display:flex;align-items:center;gap:10px;width:100%;text-align:left;min-height:46px;padding:9px 11px;
+  background:rgba(7,13,24,.45);border:1px solid var(--line);border-radius:11px;color:var(--ink);font-size:12.5px;font-weight:600}
+.tool:hover{border-color:var(--line2);box-shadow:0 0 14px rgba(47,123,255,.2)}
+.tool .ti{flex:none;width:22px;height:22px;display:grid;place-items:center;border-radius:6px;background:rgba(47,123,255,.12)}
+.tool:disabled{opacity:.45;cursor:not-allowed}
+
+.tip{display:flex;gap:10px;align-items:flex-start;background:linear-gradient(135deg, rgba(245,185,61,.12), rgba(245,185,61,.04));
+  border:1px solid rgba(245,185,61,.35)}
+.tip .bulb{flex:none;color:var(--tip)}
+.tip p{margin:0;font-size:12px;color:#e6d3a6;line-height:1.4}
+.tip b{color:var(--tip)}
+
+/* ---------- center: plot ---------- */
+.plot-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:clamp(5px,0.9vh,9px);flex-wrap:wrap;flex:0 0 auto}
+.legend{display:flex;gap:clamp(8px,1vw,14px);flex-wrap:wrap;font-size:clamp(10.5px,1.5vh,11.5px);color:var(--muted)}
+.legend .k{display:inline-flex;align-items:center;gap:6px}
+.shapeA{width:11px;height:11px;border-radius:50%;background:var(--A);display:inline-block;box-shadow:0 0 8px rgba(59,157,255,.7)}
+.shapeB{width:10px;height:10px;background:var(--B);display:inline-block;transform:rotate(45deg);box-shadow:0 0 8px rgba(34,211,238,.7)}
+.lineCur{width:24px;height:0;border-top:2px dashed #22d3ee;display:inline-block}
+.lineBest{width:24px;height:0;border-top:2px solid var(--tip);display:inline-block}
+.plot-wrap{position:relative;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--soft);flex:1 1 0;min-height:222px;display:grid;place-items:center}
+canvas#mainCanvas{display:block;width:100%;height:auto;aspect-ratio:1.62/1;touch-action:manipulation}
+.axislabel{position:absolute;font-size:11px;color:var(--muted);font-weight:700;pointer-events:none}
+.axis-x1-name{right:8px;top:calc(50% + 6px)}
+.axis-x2-name{top:8px;left:calc(50% + 6px)}
+.tick{position:absolute;font-size:9.5px;color:var(--muted);pointer-events:none;font-variant-numeric:tabular-nums}
+.tick.x{bottom:4px;transform:translateX(-50%)}
+.tick.y{left:6px;transform:translateY(-50%)}
+#pointCaption{position:absolute;transform:translate(-50%,-160%);background:rgba(47,123,255,.92);color:#fff;
+  font-size:11px;font-weight:650;padding:5px 9px;border-radius:8px;white-space:nowrap;pointer-events:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);max-width:220px}
+
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(5px,0.8vw,9px);margin-top:clamp(6px,1vh,11px);flex:0 0 auto}
+.metric{display:flex;align-items:center;gap:clamp(5px,0.7vw,8px);padding:clamp(4px,0.7vh,8px) clamp(5px,0.8vw,9px);background:rgba(7,13,24,.5);border:1px solid var(--line);border-radius:12px;min-width:0}
+.metric .mico{flex:none;width:clamp(20px,2.8vh,26px);height:clamp(20px,2.8vh,26px);border-radius:8px;display:grid;place-items:center;background:rgba(47,123,255,.12)}
+.metric .mbody{min-width:0}
+.metric small{display:block;font-size:clamp(8px,1.2vh,9.5px);color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.15}
+.metric .mval{font-size:clamp(14px,2vh,18px);font-weight:800;letter-spacing:-.4px;font-variant-numeric:tabular-nums;line-height:1.1;white-space:nowrap}
+.metric .mval .den{font-size:9.5px;color:var(--dim);font-weight:600;letter-spacing:0;white-space:normal}
+.metric.state .mval{font-size:clamp(10px,1.5vh,13px);white-space:normal}
+
+/* how it works */
+.howto{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(6px,0.9vh,9px)}
+.how{display:flex;gap:9px;padding:clamp(6px,1vh,9px) clamp(7px,0.9vw,10px);background:rgba(7,13,24,.4);border:1px solid var(--line);border-radius:11px;min-width:0}
+.how .hn{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.how .hb{min-width:0}
+.how b{display:block;font-size:clamp(11px,1.7vh,12px)}
+.how small{display:block;font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.25}
+
+/* boundary */
+.boundary{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.mini{display:flex;flex-direction:column;gap:5px;align-items:center}
+.mini canvas{display:block;width:clamp(82px,10vh,120px);height:auto;aspect-ratio:132/96;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+.mini small{font-size:10.5px;color:var(--muted)}
+.barrow{color:var(--accent2);font-size:20px;font-weight:800}
+.bnote{font-size:11.5px;color:var(--muted);margin:8px 0 0}
+.chgrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:clamp(5px,0.9vh,9px)}
+.chg{background:rgba(7,13,24,.7);border:1px solid var(--line);border-radius:9px;padding:clamp(4px,0.7vh,7px) clamp(6px,0.8vw,10px);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:clamp(10.5px,1.5vh,11.5px)}
+.chg span{color:var(--muted)}
+.chg em{font-style:normal;color:var(--dim);margin:0 4px}
+.chg b{color:var(--tip)}
+
+/* ---------- step scene: single block near canvas, consolidates "what happened" ---------- */
+.scene{flex:0 0 auto}
+.scene-line{display:flex;flex-wrap:wrap;align-items:center;gap:3px 12px;font-size:clamp(11px,1.7vh,12.5px);color:var(--muted);margin-bottom:clamp(4px,0.7vh,10px)}
+.scene-line .sc-k{color:var(--dim);font-weight:650}
+.scene-line b{color:var(--ink)}
+.chgrow .sc-k{margin-right:2px}
+.scene .chgrow{margin-top:0;padding-top:clamp(5px,0.8vh,9px);border-top:1px solid rgba(80,140,255,.10)}
+.scene-next{margin:clamp(4px,0.7vh,10px) 0 0;font-size:clamp(11px,1.6vh,12px);color:var(--muted)}
+.sc-ok.okv{color:var(--ok)}
+.sc-ok.badv{color:var(--err)}
+/* lesson mode shows only what the current stage needs: hide lab-service tools */
+#app[data-mode="lesson"] #toolsCard{display:none}
+
+.success{margin-top:clamp(5px,0.9vh,11px);display:flex;align-items:center;gap:11px;padding:clamp(7px,1.1vh,11px) clamp(9px,1vw,13px);border-radius:12px;
+  background:linear-gradient(135deg, rgba(34,197,94,.16), rgba(34,197,94,.05));border:1px solid rgba(34,197,94,.45)}
+.success h3{margin:0;font-size:13.5px;color:#9be7b4}
+.success p{margin:2px 0 0;font-size:11.5px;color:#7fc99a}
+
+/* ---------- right column ---------- */
+.mascot-card{display:flex;flex-direction:row;align-items:center;gap:clamp(8px,1vw,12px)}
+.mascot-svg{width:clamp(52px,9vh,110px);height:auto;flex:none;display:block;filter:drop-shadow(0 0 18px rgba(47,123,255,.35))}
+.speech{position:relative;flex:1;min-width:0;background:rgba(47,123,255,.12);border:1px solid var(--line2);border-radius:13px;padding:clamp(7px,1.1vh,12px);font-size:clamp(11px,1.6vh,12.5px);min-height:0}
+.speech b{color:var(--accent2)}
+.speech::before{content:"";position:absolute;top:50%;left:-6px;width:11px;height:11px;margin-top:-5px;background:rgba(47,123,255,.12);
+  border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);transform:rotate(45deg)}
+
+.curpoint{display:flex;align-items:center;gap:clamp(8px,1vw,12px)}
+.cur-card{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:clamp(8px,1vw,12px);row-gap:2px}
+.cur-card h3{grid-column:1 / -1;margin-bottom:0}
+.cur-card .curpoint{grid-column:1}
+.cur-card #curPointCaption{grid-column:2;margin:0}
+.curdot{flex:none;width:clamp(28px,4.4vh,44px);height:clamp(28px,4.4vh,44px);border-radius:50%;background:radial-gradient(circle at 40% 35%, #8fc6ff, var(--A));
+  box-shadow:0 0 22px rgba(59,157,255,.85)}
+.curcoords{font-size:clamp(16px,2.4vh,22px);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.curcap{margin:clamp(3px,0.5vh,6px) 0 0;font-size:clamp(10.5px,1.5vh,11.5px);color:var(--muted)}
+
+.choose{display:grid;grid-template-columns:1fr 1fr;gap:clamp(6px,0.9vw,9px)}
+.cls-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:clamp(44px,7.2vh,66px);padding:clamp(5px,0.9vh,9px);
+  border:1.5px solid var(--line);border-radius:12px;background:rgba(7,13,24,.5);color:var(--ink);font-weight:700;font-size:clamp(11.5px,1.8vh,13px)}
+.cls-btn small{font-weight:600;font-size:clamp(9.5px,1.4vh,10.5px);color:var(--muted)}
+.cls-btn .cshape{width:16px;height:16px}
+.cls-btn.a .cshape{border-radius:50%;background:var(--A);box-shadow:0 0 10px rgba(59,157,255,.8)}
+.cls-btn.b .cshape{background:var(--B);transform:rotate(45deg);box-shadow:0 0 10px rgba(34,211,238,.8)}
+.cls-btn.a[aria-pressed="true"]{background:linear-gradient(135deg, rgba(59,157,255,.30), rgba(59,157,255,.10));border-color:var(--A);box-shadow:0 0 20px rgba(59,157,255,.45)}
+.cls-btn.b[aria-pressed="true"]{background:linear-gradient(135deg, rgba(34,211,238,.28), rgba(34,211,238,.08));border-color:var(--B);box-shadow:0 0 20px rgba(34,211,238,.45)}
+.cls-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.cta{width:100%;min-height:clamp(44px,6.4vh,50px);border:0;border-radius:13px;font-weight:800;font-size:clamp(12.5px,1.9vh,14.5px);color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 26px rgba(47,123,255,.4)}
+.cta:hover{filter:brightness(1.08)}
+.cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:clamp(5px,0.8vw,8px);margin-top:2px}
+.ctl{min-height:clamp(44px,5.6vh,48px);padding:clamp(5px,0.8vh,9px) clamp(7px,0.8vw,10px);border:1px solid var(--line);border-radius:11px;background:rgba(7,13,24,.5);color:var(--ink);font-weight:650;font-size:clamp(11px,1.6vh,12.5px)}
+.ctl:hover{border-color:var(--line2)}
+.ctl.primary{background:linear-gradient(135deg, rgba(47,123,255,.9), rgba(74,163,255,.9));border-color:transparent}
+.ctl:disabled{opacity:.45;cursor:not-allowed}
+
+.after{display:flex;flex-direction:column;gap:clamp(4px,0.7vh,8px)}
+.after-item{display:flex;align-items:center;gap:9px;padding:clamp(4px,0.7vh,9px) clamp(6px,0.8vw,10px);background:rgba(7,13,24,.45);border:1px solid var(--line);border-radius:11px}
+.after-item .ai{flex:none;width:clamp(20px,3vh,26px);height:clamp(20px,3vh,26px);border-radius:8px;display:grid;place-items:center;background:rgba(47,123,255,.14);font-size:12px}
+.after-item .ab{min-width:0;flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.after-item b{display:inline;font-size:clamp(10.5px,1.6vh,12px)}
+.after-item small{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
+.after-item .aval{display:inline;font-size:clamp(10.5px,1.6vh,12px);font-weight:750;margin-top:0;color:var(--ink);text-align:right;white-space:nowrap}
+.after-item .aval.okv{color:var(--ok)}
+.after-item .aval.badv{color:var(--err)}
+.after-arrow{align-self:center;color:var(--dim);font-size:clamp(7px,1vh,12px);line-height:1;text-align:center}
+
+/* ---------- lab ---------- */
+.lab{margin-top:clamp(8px,1.2vh,16px)}
+.labgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(8px,1.2vh,14px)}
+.control{margin-bottom:12px}
+.control > label{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:650;color:var(--muted);margin-bottom:6px}
+.control .val{font-variant-numeric:tabular-nums;color:var(--ink)}
+input[type=range]{width:100%;min-height:44px;accent-color:var(--accent)}
+input[type=number]{width:80px;min-height:44px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--ink)}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.preset{padding:9px 12px;min-width:44px;min-height:44px;border:1px solid var(--line);background:rgba(7,13,24,.5);border-radius:9px;font-weight:600;font-size:12px;color:var(--ink)}
+.preset[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
+.principle{display:flex;gap:6px;flex-wrap:wrap}
+.princ{padding:9px 12px;min-width:44px;min-height:44px;border:1px solid var(--line);background:rgba(7,13,24,.5);border-radius:9px;font-weight:600;font-size:12px;color:var(--ink)}
+.princ[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
+.hebb-note{margin:10px 0 0;font-size:11.5px;color:#e6d3a6;line-height:1.45;background:linear-gradient(135deg, rgba(245,185,61,.10), rgba(245,185,61,.03));border:1px solid rgba(245,185,61,.35);border-radius:11px;padding:10px 11px}
+.log{height:clamp(110px,16vh,158px);overflow:auto;font-size:11.5px;color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace}
+.log div{padding:3px 0;border-bottom:1px solid rgba(80,140,255,.10)}
+table.w{width:100%;border-collapse:collapse;font-size:12.5px}
+table.w td{padding:7px 4px;border-bottom:1px solid rgba(80,140,255,.12);color:var(--muted)}
+table.w td:last-child{text-align:right;font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
+.math{background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.9;word-break:break-word;color:var(--muted)}
+.math .a{color:var(--accent2)}
+.math .m{color:var(--dim)}
+canvas#errChart{display:block;width:100%;height:clamp(88px,14vh,120px);margin-top:6px}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:rgba(4,8,16,.66);display:grid;place-items:center;padding:clamp(10px,2vh,18px);z-index:40}
+.dialog{max-width:520px;width:100%;max-height:calc(100dvh - 2*clamp(10px,2vh,18px));overflow:auto;background:linear-gradient(180deg,#111d33,#0c1628);
+  border:1px solid var(--line2);border-radius:16px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.dialog h2{margin:0 0 10px;font-size:16px}
+.dialog p,.dialog li{font-size:12.5px;color:var(--muted);line-height:1.5}
+.dialog ul{margin:8px 0;padding-left:18px}
+.dialog .dclose{margin-top:14px}
+.neuron-svg{display:block;margin:12px auto 2px;max-width:100%;height:auto}
+
+/* history & structure panel inside Help dialog */
+.hist-panel{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.hist-panel > h3{margin:0 0 8px;font-size:14.5px}
+.hist-sec{margin:0 0 11px}
+.hist-sec h4{margin:0 0 4px;font-size:12.5px;color:var(--accent2)}
+.hist-sec p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.tl{list-style:none;margin:4px 0 0;padding:0}
+.tl li{display:flex;gap:8px;font-size:12px;color:var(--muted);padding:3px 0;border-bottom:1px solid rgba(80,140,255,.10)}
+.tl li b{flex:none;min-width:52px;color:var(--tip);font-variant-numeric:tabular-nums}
+.nn-svg{display:block;margin:8px auto 2px;max-width:100%;height:auto}
+.gloss{width:100%;border-collapse:collapse;font-size:12px}
+.gloss td{padding:5px 4px;border-bottom:1px solid rgba(80,140,255,.12);color:var(--muted)}
+.gloss td:last-child{text-align:right;color:var(--ink);font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
+
+/* ---------- collapse rule (desktop short windows): first "Как это работает?", then the "до/после" minis ---------- */
+@media(min-width:1081px) and (max-height:820px){
+  .col-center > .card.howto-card{display:none}
+  .after-arrow{display:none}
+}
+@media(min-width:1081px) and (max-height:790px){
+  .boundary{display:none}
+}
+
+/* ---------- lab: page does not scroll; the settings grid scrolls inside itself ---------- */
+@media(min-width:1081px) and (min-height:560px){
+  /* K1/K2: поле графика в «Лаборатории» ограничено ВИДИМОЙ высотой своей колонки,
+     а не собственной желаемой высотой. Карточка растягивается на высоту колонки,
+     plot-wrap забирает остаток после заголовка/метрик/сцены (минимум 220px),
+     canvas вписывается в него через fitCanvasBox() с сохранением пропорции 1.62:1.
+     Поле растёт вместе с окном, но никогда не выходит за видимую часть колонки. */
+  #app[data-mode="lab"] .wrap{flex:1 1 auto;min-height:0}
+  #app[data-mode="lab"] .col{overflow:auto;min-height:0}
+  #app[data-mode="lab"] .col-center > .card{flex:1 1 auto;min-height:0}
+  #app[data-mode="lab"] .plot-wrap{flex:1 1 auto;height:auto;min-height:220px}
+  /* K3: если места меньше минимума поля — уступает панель лабораторных настроек
+     (прокручивается внутри), поле остаётся целым. */
+  #app[data-mode="lab"] .lab{flex:1 1 0;min-height:0;overflow:auto}
+}
+
+@media(min-width:1280px){
+  .howto{grid-template-columns:repeat(6,1fr)}
+}
+@media(max-width:1080px){
+  .app{height:auto;min-height:100dvh}
+  .wrap{display:flex;flex-direction:column;flex:0 0 auto;min-height:0}
+  .col{overflow:visible}
+  .col-right{order:1}
+  .col-center{order:2}
+  .col-left{order:3}
+  .col-center > .card{display:block;flex:none}
+  .plot-wrap{display:block;flex:none}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .howto{grid-template-columns:repeat(2,1fr)}
+  .stepper{min-width:0;width:100%}
+  .mascot-card{flex-direction:column;align-items:stretch}
+  .mascot-svg{width:clamp(70px,16vw,110px);flex:none;align-self:center}
+  .speech::before{top:-6px;left:32px;margin-top:0;border-left:1px solid var(--line2);border-top:1px solid var(--line2);border-bottom:0}
+}
+@media(max-width:640px){
+  .app{padding:10px 11px 24px}
+  .topbar{padding:11px 12px;gap:12px}
+  .stepper{width:100%}
+  .steps li{min-width:0}
+  .steps li .slabel{font-size:9px;max-width:60px}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .howto{grid-template-columns:1fr}
+  canvas#mainCanvas{aspect-ratio:1.15/1}
+  .mini canvas{width:118px}
+}
+@media(prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important;scroll-behavior:auto !important}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-mode="lesson">
+
+  <!-- ================= TOP BAR ================= -->
+  <header class="topbar">
+    <div class="brandcol brand">
+      <span class="mark" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <g stroke="#2f7bff" stroke-width="1.6" opacity=".9">
+            <line x1="16" y1="16" x2="6" y2="7"/><line x1="16" y1="16" x2="26" y2="7"/>
+            <line x1="16" y1="16" x2="6" y2="25"/><line x1="16" y1="16" x2="26" y2="25"/>
+            <line x1="16" y1="16" x2="16" y2="3"/><line x1="16" y1="16" x2="16" y2="29"/>
+          </g>
+          <g fill="#4aa3ff">
+            <circle cx="6" cy="7" r="2.4"/><circle cx="26" cy="7" r="2.4"/>
+            <circle cx="6" cy="25" r="2.4"/><circle cx="26" cy="25" r="2.4"/>
+            <circle cx="16" cy="3" r="2.4"/><circle cx="16" cy="29" r="2.4"/>
+          </g>
+          <circle cx="16" cy="16" r="4.5" fill="#4aa3ff"/>
+        </svg>
+      </span>
+      <div>
+        <h1>Perceptron <span class="lab">Lab</span></h1>
+        <p>Интерактивный симулятор<br>машинного обучения</p>
+      </div>
+    </div>
+
+    <div class="modes" role="group" aria-label="Режим работы">
+      <button class="mode" id="modeLesson" type="button" aria-pressed="true">
+        <span class="mi" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M2 8l10-5 10 5-10 5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 10.5V15c0 1.7 2.7 3 6 3s6-1.3 6-3v-4.5" stroke="currentColor" stroke-width="1.8"/></svg>
+        </span>
+        <span><span class="mt">Урок</span><span class="ms">Понятно и просто</span></span>
+      </button>
+      <button class="mode" id="modeLab" type="button" aria-pressed="false">
+        <span class="mi" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </span>
+        <span><span class="mt">Лаборатория</span><span class="ms">Для любопытных</span></span>
+      </button>
+    </div>
+
+    <div class="stepper">
+      <span class="steptext">Урок <b id="progNow">1</b> из <b>4</b></span>
+      <ol class="steps" id="lessonSteps" aria-label="Этапы урока">
+        <li data-step="1"><span class="dot">1</span><span class="slabel">Смотрю на точку</span></li>
+        <li data-step="2"><span class="dot">2</span><span class="slabel">Угадываю</span></li>
+        <li data-step="3"><span class="dot">3</span><span class="slabel">Проверяю и исправляюсь</span></li>
+        <li data-step="4"><span class="dot">4</span><span class="slabel">Иду дальше</span></li>
+      </ol>
+    </div>
+
+    <div class="iconbtns">
+      <button class="iconbtn" id="btnHelp" type="button" aria-label="Помощь" title="Помощь">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 5.5A2.5 2.5 0 016.5 3H19v15H6.5A2.5 2.5 0 004 20.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 7h7M8 10h7" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <button class="iconbtn" id="btnSettings" type="button" aria-label="Настройки" title="Настройки">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5l1.6 2.4 2.8-.6.6 2.8 2.5 1.4-1.6 2.4 1.6 2.4-2.5 1.4-.6 2.8-2.8-.6L12 21.5l-1.6-2.4-2.8.6-.6-2.8L4.5 15.5 6.1 13 4.5 10.6 7 9.2l.6-2.8 2.8.6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= THREE COLUMNS ================= -->
+  <div class="wrap">
+
+    <!-- ---------- LEFT ---------- -->
+    <div class="col col-left">
+      <section class="card" aria-label="Выбери эксперимент">
+        <h3 class="sm">Выбери эксперимент</h3>
+        <div class="exp-list" id="expList">
+          <button class="exp-card" type="button" data-preset="simple" aria-pressed="true">
+            <svg class="thumb" width="52" height="42" viewBox="0 0 60 44" aria-hidden="true">
+              <rect width="60" height="44" rx="8" fill="#0b1424"/>
+              <g fill="#3b9dff"><circle cx="13" cy="12" r="3"/><circle cx="19" cy="22" r="3"/><circle cx="11" cy="31" r="3"/><circle cx="24" cy="15" r="2.4"/></g>
+              <g fill="#22d3ee"><path d="M44 8l4 4-4 4-4-4z"/><path d="M49 22l4 4-4 4-4-4z"/><path d="M41 30l3 3-3 3-3-3z"/></g>
+            </svg>
+            <span class="etxt"><span class="ename">Простая задача</span><span class="edesc">Две группы, легко разделить.</span></span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>
+          <button class="exp-card" type="button" data-preset="diagonal" aria-pressed="false">
+            <svg class="thumb" width="52" height="42" viewBox="0 0 60 44" aria-hidden="true">
+              <rect width="60" height="44" rx="8" fill="#0b1424"/>
+              <line x1="8" y1="38" x2="52" y2="6" stroke="#4aa3ff" stroke-width="2" stroke-dasharray="4 3"/>
+              <g fill="#3b9dff"><circle cx="12" cy="30" r="3"/><circle cx="18" cy="25" r="3"/><circle cx="21" cy="34" r="2.6"/></g>
+              <g fill="#22d3ee"><path d="M44 12l3 3-3 3-3-3z"/><path d="M49 20l3 3-3 3-3-3z"/></g>
+            </svg>
+            <span class="etxt"><span class="ename">Диагональ</span><span class="edesc">Граница под углом.</span></span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>
+          <button class="exp-card" type="button" data-preset="noise" aria-pressed="false">
+            <svg class="thumb" width="52" height="42" viewBox="0 0 60 44" aria-hidden="true">
+              <rect width="60" height="44" rx="8" fill="#0b1424"/>
+              <g fill="#3b9dff"><circle cx="12" cy="12" r="3"/><circle cx="18" cy="20" r="3"/><circle cx="14" cy="28" r="2.6"/><circle cx="30" cy="22" r="3"/></g>
+              <g fill="#22d3ee"><path d="M44 10l4 4-4 4-4-4z"/><path d="M48 26l3 3-3 3-3-3z"/><path d="M36 33l3 3-3 3-3-3z"/></g>
+            </svg>
+            <span class="etxt"><span class="ename">С шумом</span><span class="edesc">Данные с шумом.</span></span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>
+          <button class="exp-card" type="button" data-preset="xor" aria-pressed="false">
+            <svg class="thumb" width="52" height="42" viewBox="0 0 60 44" aria-hidden="true">
+              <rect width="60" height="44" rx="8" fill="#0b1424"/>
+              <g fill="#3b9dff"><circle cx="14" cy="12" r="3"/><circle cx="46" cy="32" r="3"/></g>
+              <g fill="#22d3ee"><path d="M46 10l3 3-3 3-3-3z"/><path d="M14 30l3 3-3 3-3-3z"/></g>
+            </svg>
+            <span class="etxt"><span class="ename">XOR</span><span class="edesc">Одна прямая не разделит.</span></span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>
+          <button class="exp-card" type="button" data-preset="and" aria-pressed="false">
+            <svg class="thumb" width="52" height="42" viewBox="0 0 60 44" aria-hidden="true">
+              <rect width="60" height="44" rx="8" fill="#0b1424"/>
+              <g fill="#3b9dff"><circle cx="14" cy="14" r="3"/><circle cx="14" cy="30" r="3"/><circle cx="26" cy="32" r="3"/></g>
+              <g fill="#22d3ee"><path d="M46 8l4 4-4 4-4-4z"/></g>
+            </svg>
+            <span class="etxt"><span class="ename">И (AND)</span><span class="edesc">Класс B, только когда оба входа положительны.</span></span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>
+          <button class="exp-card" type="button" data-preset="or" aria-pressed="false">
+            <svg class="thumb" width="52" height="42" viewBox="0 0 60 44" aria-hidden="true">
+              <rect width="60" height="44" rx="8" fill="#0b1424"/>
+              <g fill="#3b9dff"><circle cx="14" cy="32" r="3"/></g>
+              <g fill="#22d3ee"><path d="M46 8l4 4-4 4-4-4z"/><path d="M46 30l4 4-4 4-4-4z"/><path d="M26 8l4 4-4 4-4-4z"/></g>
+            </svg>
+            <span class="etxt"><span class="ename">ИЛИ (OR)</span><span class="edesc">Класс B, когда хотя бы один вход положителен.</span></span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="card" id="toolsCard" aria-label="Инструменты">
+        <h3 class="sm">Инструменты</h3>
+        <div class="tool-list">
+          <button class="tool" id="toolAddA" type="button">
+            <span class="ti" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5" fill="#3b9dff"/></svg></span>
+            Добавить точку класса A
+          </button>
+          <button class="tool" id="toolAddB" type="button">
+            <span class="ti" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 2l5 6-5 6-5-6z" fill="#22d3ee"/></svg></span>
+            Добавить точку класса B
+          </button>
+          <button class="tool" id="toolDelete" type="button">
+            <span class="ti" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 3l9 9M6 12l7-7" stroke="#9fb0c9" stroke-width="1.6" stroke-linecap="round"/><path d="M11 11l3 3" stroke="#9fb0c9" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            Удалить точку
+          </button>
+          <button class="tool" id="toolClear" type="button">
+            <span class="ti" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6 5V3h4v2M5 5l1 9h4l1-9" stroke="#9fb0c9" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
+            Очистить поле
+          </button>
+          <button class="tool" id="toolGenerate" type="button">
+            <span class="ti" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M13 8a5 5 0 11-1.6-3.7" stroke="#9fb0c9" stroke-width="1.6" stroke-linecap="round"/><path d="M13 2v3h-3" stroke="#9fb0c9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Сгенерировать новый набор
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ---------- CENTER ---------- -->
+    <div class="col col-center">
+      <section class="card" aria-label="Координатная плоскость">
+        <div class="plot-head">
+          <h2 style="margin:0">Координатная плоскость</h2>
+          <div class="legend">
+            <span class="k"><i class="shapeA" aria-hidden="true"></i> Класс A (круги)</span>
+            <span class="k"><i class="shapeB" aria-hidden="true"></i> Класс B (ромбы)</span>
+            <span class="k"><i class="lineCur" aria-hidden="true"></i> текущая — пунктир</span>
+            <span class="k"><i class="lineBest" aria-hidden="true"></i> лучшая за прогон — золотая</span>
+          </div>
+        </div>
+        <div class="plot-wrap" id="plotWrap">
+          <canvas id="mainCanvas" role="img" aria-label="Координатная плоскость с точками двух классов и границей решения перцептрона"></canvas>
+          <span class="axislabel axis-x1-name" aria-hidden="true">X₁</span>
+          <span class="axislabel axis-x2-name" aria-hidden="true">X₂</span>
+          <span class="tick x" style="left:0%;transform:translateX(0)">−1.0</span>
+          <span class="tick x" style="left:25%">−0.5</span>
+          <span class="tick x" style="left:50%">0</span>
+          <span class="tick x" style="left:75%">0.5</span>
+          <span class="tick x" style="left:100%;transform:translateX(-100%)">1.0</span>
+          <span class="tick y" style="top:100%;transform:translateY(-100%)">−1.0</span>
+          <span class="tick y" style="top:75%">−0.5</span>
+          <span class="tick y" style="top:50%">0</span>
+          <span class="tick y" style="top:25%">0.5</span>
+          <span class="tick y" style="top:0%;transform:translateY(0)">1.0</span>
+          <span id="pointCaption" hidden>Эту точку сейчас рассматриваю я!</span>
+        </div>
+        <div id="finishBanner" class="success" role="status" hidden>
+          <span aria-hidden="true"><svg width="34" height="34" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#22c55e"/><path d="M14 25l7 7 14-16" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div><h3>Ошибок больше нет</h3><p id="finishText"></p></div>
+        </div>
+        <div class="metrics" id="metrics" aria-live="polite">
+          <div class="metric">
+            <span class="mico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8h3l2-4 2 8 2-4h3" stroke="#4aa3ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="mbody"><small>Шаг</small><span class="mval"><span id="mStep">0</span> <span class="den">из 20</span></span></span>
+          </div>
+          <div class="metric">
+            <span class="mico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" fill="none" stroke="#ef4444" stroke-width="1.6"/><path d="M5.4 5.4l5.2 5.2M10.6 5.4l-5.2 5.2" stroke="#ef4444" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="mbody"><small>Ошибок</small><span class="mval" id="mErr">—</span></span>
+          </div>
+          <div class="metric" title="Доля верных ответов на обучающих точках; обобщение на новых данных этой плиткой не измеряется">
+            <span class="mico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="rgba(80,140,255,.35)" stroke-width="2.4"/><circle id="accRing" cx="10" cy="10" r="7.5" stroke="#4aa3ff" stroke-width="2.4" stroke-dasharray="47" stroke-dashoffset="47" stroke-linecap="round" transform="rotate(-90 10 10)"/></svg></span>
+            <span class="mbody"><small>Точность</small><span class="mval" id="mAcc">—</span></span>
+          </div>
+          <div class="metric">
+            <span class="mico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5V9M8 13.5V3M13.5 13.5V6.5" stroke="#f5b93d" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <span class="mbody"><small>Лучшее за прогон</small><span class="mval"><span id="mBest">—</span> <span class="den">ошибок</span></span></span>
+          </div>
+          <div class="metric state">
+            <span class="mico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8c2-4 4-4 6 0s4 4 6 0" stroke="#22c55e" stroke-width="1.6" stroke-linecap="round"/><path d="M1 12c2-3 4-3 6 0s4 3 6 0" stroke="#22c55e" stroke-width="1.4" stroke-linecap="round" opacity=".6"/></svg></span>
+            <span class="mbody"><small>Состояние</small><span class="mval" id="mState">Готов к уроку</span></span>
+          </div>
+        </div>
+        <p class="bnote" id="metricNote" hidden>В режиме Хебба оценка по меткам не применяется: у данных нет «правильного ответа».</p>
+        <div class="scene" id="stepScene" aria-label="Что произошло на шаге">
+          <h3 class="sm">Что произошло на шаге</h3>
+          <div class="scene-line">
+            <span class="sc-k">Точка</span><b id="scPoint">—</b>
+            <span class="sc-sep" aria-hidden="true">·</span>
+            <span class="sc-k">Ответ</span><b id="scGuess">—</b>
+            <span class="sc-sep" aria-hidden="true">·</span>
+            <span class="sc-k">Проверка</span><b id="scOk" class="sc-ok">—</b>
+          </div>
+          <div class="chgrow" id="chgRow">
+            <span class="sc-k">Изменение весов:</span>
+            <span class="chg">w₁ <span id="chgW1">0.000</span><em>→</em><b id="newW1">0.000</b></span>
+            <span class="chg">w₂ <span id="chgW2">0.000</span><em>→</em><b id="newW2">0.000</b></span>
+            <span class="chg">b <span id="chgB">0.000</span><em>→</em><b id="newB">0.000</b></span>
+          </div>
+          <p class="scene-next" id="scNext">Нажми «Начать» — я посмотрю на первую точку.</p>
+          <div class="boundary">
+            <div class="mini"><canvas id="miniBefore" role="img" aria-label="Граница до шага"></canvas><small>до</small></div>
+            <span class="barrow" aria-hidden="true">→</span>
+            <div class="mini"><canvas id="miniAfter" role="img" aria-label="Граница после шага"></canvas><small>после</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card howto-card" aria-label="Как это работает">
+        <h3>Как это работает?</h3>
+        <div class="howto">
+          <div class="how"><span class="hn">1</span><span class="hb"><b>Я смотрю на точку</b></span></div>
+          <div class="how"><span class="hn">2</span><span class="hb"><b>Делаю догадку</b></span></div>
+          <div class="how"><span class="hn">3</span><span class="hb"><b>Проверяю правильно ли</b></span></div>
+          <div class="how"><span class="hn">4</span><span class="hb"><b>Исправляюсь если ошибся</b></span></div>
+          <div class="how"><span class="hn">5</span><span class="hb"><b>Линия двигается</b></span></div>
+          <div class="how"><span class="hn">6</span><span class="hb"><b>Постепенно я учусь</b></span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ---------- RIGHT ---------- -->
+    <div class="col col-right">
+      <section class="card mascot-card" aria-label="Перцептрон-учитель">
+        <svg class="mascot-svg" viewBox="0 0 140 150" role="img" aria-label="Дружелюбный робот-перцептрон, указывает вверх-влево">
+          <ellipse cx="70" cy="142" rx="46" ry="7" fill="rgba(47,123,255,.25)"/>
+          <rect x="34" y="80" width="72" height="54" rx="16" fill="#e8f1ff" stroke="#2f7bff" stroke-width="2"/>
+          <rect x="46" y="92" width="48" height="26" rx="8" fill="#0f1a2e" stroke="rgba(80,140,255,.4)"/>
+          <circle cx="58" cy="105" r="4" fill="#4aa3ff"/>
+          <circle cx="82" cy="105" r="4" fill="#4aa3ff"/>
+          <rect x="40" y="26" width="60" height="48" rx="16" fill="#f4f8ff" stroke="#2f7bff" stroke-width="2"/>
+          <rect x="50" y="40" width="40" height="20" rx="10" fill="#0f1a2e" stroke="rgba(80,140,255,.5)"/>
+          <circle cx="61" cy="50" r="4.5" fill="#4aa3ff"/>
+          <circle cx="79" cy="50" r="4.5" fill="#4aa3ff"/>
+          <line x1="70" y1="26" x2="70" y2="12" stroke="#2f7bff" stroke-width="2"/>
+          <circle cx="70" cy="9" r="4" fill="#4aa3ff"/>
+          <path d="M40 92 L18 66" stroke="#2f7bff" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="16" cy="64" r="7" fill="#e8f1ff" stroke="#2f7bff" stroke-width="3"/>
+        </svg>
+        <p class="speech" id="mascotSpeech" aria-live="polite">Я смотрю на эту точку. Как ты думаешь, что я отвечу?</p>
+      </section>
+
+      <section class="card cur-card" aria-label="Текущая точка">
+        <h3 class="sm">Текущая точка</h3>
+        <div class="curpoint">
+          <span class="curdot" id="curDot" aria-hidden="true"></span>
+        </div>
+        <p class="curcap" id="curPointCaption">Точка ещё не выбрана.</p>
+      </section>
+
+      <section class="card" aria-label="Что выберешь ты">
+        <h3 class="sm">Что выберешь ты?</h3>
+        <div class="choose">
+          <button class="cls-btn a" id="ansA" type="button" aria-pressed="false" aria-label="Класс A, круг">
+            <span class="cshape" aria-hidden="true"></span>
+            Класс A <small>(круг)</small>
+          </button>
+          <button class="cls-btn b" id="ansB" type="button" aria-pressed="false" aria-label="Класс B, ромб">
+            <span class="cshape" aria-hidden="true"></span>
+            Класс B <small>(ромб)</small>
+          </button>
+        </div>
+        <button class="cta" id="checkAnswer" type="button" style="margin-top:10px" disabled>Проверить ответ →</button>
+        <div class="controls">
+          <button class="ctl primary" id="mainAction" type="button">Начать</button>
+          <button class="ctl" id="stepAction" type="button" hidden>Сделать шаг</button>
+          <button class="ctl" id="autoAction" type="button">Обучить до конца</button>
+          <button class="ctl" id="resetAction" type="button">Сбросить</button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="После твоего ответа">
+        <h3 class="sm">После твоего ответа я покажу:</h3>
+        <div class="after">
+          <div class="after-item"><span class="ai" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#4aa3ff" stroke-width="1.5"/><path d="M6.2 6.4a1.9 1.9 0 113 1.5c-.7.5-1.2.9-1.2 1.7" stroke="#4aa3ff" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="11.6" r=".9" fill="#4aa3ff"/></svg></span><span class="ab"><b>Моя догадка</b><span class="aval" id="resGuess">—</span></span></div>
+          <span class="after-arrow" aria-hidden="true">↓</span>
+          <div class="after-item"><span class="ai" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3.2L13 4.6" stroke="#22c55e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="ab"><b>Правильный ответ</b><span class="aval" id="resTarget">—</span></span></div>
+          <span class="after-arrow" aria-hidden="true">↓</span>
+          <div class="after-item"><span class="ai" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2.5v10M4.5 4h7M3 13l2.5-5.5h-1L7 13H3zm6 0l2.5-5.5h-1L13 13H9z" stroke="#9fb0c9" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="ab"><b>Правильно или ошибка?</b><span class="aval" id="resOk">—</span></span></div>
+          <span class="after-arrow" aria-hidden="true">↓</span>
+          <div class="after-item"><span class="ai" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="#4aa3ff" stroke-width="1.3"/><path d="M8 1.8l1.1 1.7 2-.4.4 2 1.7 1.1-1.1 1.7 1.1 1.7-1.7 1.1-.4 2-2-.4L8 14.2l-1.1-1.7-2 .4-.4-2-1.7-1.1 1.1-1.7L2.8 6.4l1.7-1.1.4-2 2 .4z" stroke="#4aa3ff" stroke-width="1.1" stroke-linejoin="round"/></svg></span><span class="ab"><b>Как я изменю себя</b><span class="aval" id="resChange">—</span></span></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ================= LAB ================= -->
+  <section class="lab" id="labSection" hidden aria-label="Лаборатория">
+    <div class="labgrid">
+      <div class="card">
+        <h3>Параметры обучения</h3>
+        <div class="control">
+          <span style="display:block;font-size:12px;font-weight:650;color:var(--muted);margin-bottom:6px">Принцип обучения</span>
+          <div class="principle" id="principleSwitch" role="group" aria-label="Принцип обучения">
+            <button class="princ" type="button" data-principle="supervised" aria-pressed="true">По ошибке (с учителем)</button>
+            <button class="princ" type="button" data-principle="hebb" aria-pressed="false">Без учителя (Хебб)</button>
+          </div>
+        </div>
+        <div class="control">
+          <label for="lr">Скорость обучения η <span class="val" id="lrValue">0.10</span></label>
+          <input id="lr" type="range" min="0.01" max="0.8" step="0.01" value="0.10">
+        </div>
+        <div class="control">
+          <label for="maxEpochs">Максимум эпох <span class="val" id="epochValue">60</span></label>
+          <input id="maxEpochs" type="number" min="1" max="500" step="1" value="60">
+        </div>
+        <div class="control">
+          <label for="delay">Задержка шага <span class="val" id="delayValue">150 мс</span></label>
+          <input id="delay" type="range" min="0" max="900" step="20" value="150">
+        </div>
+        <div class="control">
+          <span style="display:block;font-size:12px;font-weight:650;color:var(--muted);margin-bottom:6px">Набор данных</span>
+          <div class="presets" id="presets">
+            <button class="preset" type="button" data-preset="simple" aria-pressed="true">Простая</button>
+            <button class="preset" type="button" data-preset="diagonal" aria-pressed="false">Диагональ</button>
+            <button class="preset" type="button" data-preset="noise" aria-pressed="false">С шумом</button>
+            <button class="preset" type="button" data-preset="xor" aria-pressed="false">XOR</button>
+            <button class="preset" type="button" data-preset="and" aria-pressed="false">И</button>
+            <button class="preset" type="button" data-preset="or" aria-pressed="false">ИЛИ</button>
+          </div>
+        </div>
+        <p class="hebb-note" id="hebbNote" hidden>В режиме Хебба правильного ответа нет: веса подстраиваются под сами данные — связи усиливаются там, где вход и активность нейрона совпадают. Это исторически более ранняя идея, чем обучение по ошибке (Хебб, 1949). Нейрон не разделяет заранее заданные классы, а выделяет преобладающее направление в облаке точек. Родственный принцип — «альфа-система подкрепления» Розенблатта, из которой позже выросло дельта-правило (Уидроу–Хофф, 1960).</p>
+        <p class="bnote">Щёлкни по полю, чтобы добавить точку.</p>
+      </div>
+
+      <div class="card">
+        <h3>Веса модели</h3>
+        <table class="w"><tbody>
+          <tr><td>w₁ (вес x₁)</td><td id="w1v">0.000</td></tr>
+          <tr><td>w₂ (вес x₂)</td><td id="w2v">0.000</td></tr>
+          <tr><td>b (смещение)</td><td id="bv">0.000</td></tr>
+          <tr><td>η (скорость)</td><td id="lrTable">0.10</td></tr>
+          <tr><td>ошибок за эпоху</td><td id="errTable">—</td></tr>
+        </tbody></table>
+        <h3 style="margin-top:16px">Ошибки по эпохам</h3>
+        <canvas id="errChart" role="img" aria-label="График числа ошибок по эпохам"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Формулы</h3>
+        <div class="math">
+          <div id="mathSupervised">
+            <div><span class="a">z</span> = w₁·x₁ + w₂·x₂ + b</div>
+            <div><span class="a">ŷ</span> = step(z) = (z &gt; 0) ? 1 : 0</div>
+            <div>ошибка = y − ŷ</div>
+            <div><span class="a">w</span> += η·ошибка·x</div>
+            <div><span class="a">b</span> += η·ошибка</div>
+            <div class="m" style="margin-top:8px">Сейчас: z = <span id="mathZ">0.000</span>, ошибка = <span id="mathErr">0</span></div>
+          </div>
+          <div id="mathHebb" hidden>
+            <div><span class="a">z</span> = w₁·x₁ + w₂·x₂ + b</div>
+            <div><span class="a">y</span> = step(z) — активность нейрона</div>
+            <div><span class="a">w</span> += η·y·x</div>
+            <div><span class="a">b</span> += η·y</div>
+            <div>метки классов в обучении не используются</div>
+            <div class="m" style="margin-top:8px">Формула правила Хебба — собственная реализация исполнителя; отчёт 02-research.md её не приводит.</div>
+            <div class="m" style="margin-top:4px">Сейчас: z = <span id="mathZ2">0.000</span>, активность y = <span id="mathY2">—</span></div>
+          </div>
+        </div>
+        <h3 style="margin-top:16px">Журнал обучения</h3>
+        <div class="log" id="log" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= OVERLAYS ================= -->
+  <div class="overlay" id="helpPanel" hidden role="dialog" aria-modal="true" aria-label="Помощь">
+    <div class="dialog">
+      <h2>Помощь</h2>
+      <p>Это интерактивный симулятор однослойного перцептрона. Он учится разделять точки двух классов одной прямой линией.</p>
+      <ul>
+        <li>Выбери эксперимент слева — набор точек изменится.</li>
+        <li>В режиме «Урок» ответь, к какому классу относится выделенная точка, и нажми «Проверить ответ →».</li>
+        <li>Посмотри, как перцептрон меняет веса и сдвигает границу.</li>
+        <li>В режиме «Лаборатория» настраивай η, эпохи и добавляй точки.</li>
+      </ul>
+      <p>Класс A — круг, класс B — ромб: их можно различить без цвета.</p>
+      <section class="hist-panel" aria-label="История и структура перцептрона">
+        <h3>История и структура</h3>
+
+        <div class="hist-sec">
+          <h4>Хронология</h4>
+          <ul class="tl">
+            <li><b>1943</b><span>Мак-Каллок и Питтс — модель формального нейрона, пороговый логический элемент.</span></li>
+            <li><b>1949</b><span>Хебб — правило обучения нервных клеток, книга «Организация поведения».</span></li>
+            <li><b>1957</b><span>Розенблатт — технический отчёт с первым описанием перцептрона (январь) и моделирование на IBM 704.</span></li>
+            <li><b>1958</b><span>Статья Розенблатта в Psychological Review — отдельное событие, а не та же дата, что техотчёт.</span></li>
+            <li><b>1959</b><span>«Марк-1» — сборка и тесты на Cornell Aeronautical Laboratory.</span></li>
+            <li><b>1960</b><span>Первая публичная демонстрация «Марк-1» — 23 июня.</span></li>
+            <li><b>1969</b><span>Минский и Пейперт — «Перцептроны», разбор ограничений модели.</span></li>
+          </ul>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Структура S-A-R</h4>
+          <p>Элементарный перцептрон собран из трёх типов элементов: сенсорные S, ассоциативные A и один реагирующий R. Обучаются только веса связей A→R. Веса связей S→A (значения −1, 0, +1) и пороги A-элементов задаются случайно в начале и дальше не меняются.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Почему «однослойный»</h4>
+          <p>Перцептрон относят к однослойным, потому что обучается один слой связей (A→R). Слой A — скрытый, но необучаемый. Утверждение «скрытых слоёв нет» — упрощение: источники называют такую формулировку терминологической неточностью.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Схема формального нейрона</h4>
+          <svg class="nn-svg" width="340" height="150" viewBox="0 0 340 150" role="img" aria-label="Схема формального нейрона: входы x, веса w, сумматор Σ, функция активации φ, выход">
+            <g fill="#6b7c96"><circle cx="32" cy="35" r="6"/><circle cx="32" cy="75" r="6"/><circle cx="32" cy="115" r="6"/></g>
+            <g fill="#9fb0c9" font-size="10" font-family="inherit" text-anchor="end">
+              <text x="24" y="39">x₀</text><text x="24" y="79">x₁</text><text x="24" y="119">x₂</text>
+            </g>
+            <g stroke="#4aa3ff" stroke-width="1.6" fill="none">
+              <path d="M38 35 L131 72"/><path d="M38 75 L131 75"/><path d="M38 115 L131 78"/>
+            </g>
+            <g fill="#4aa3ff" font-size="10" font-family="inherit" text-anchor="middle">
+              <text x="84" y="50">w₀</text><text x="84" y="69">w₁</text><text x="84" y="104">w₂</text>
+            </g>
+            <circle cx="150" cy="75" r="19" fill="#0f1a2e" stroke="#4aa3ff" stroke-width="1.8"/>
+            <text x="150" y="80" text-anchor="middle" font-size="13" fill="#eef3fb" font-family="inherit">Σ</text>
+            <path d="M169 75 L196 75" stroke="#4aa3ff" stroke-width="1.8" fill="none"/>
+            <path d="M192 71 L198 75 L192 79 Z" fill="#4aa3ff"/>
+            <rect x="198" y="55" width="66" height="40" rx="9" fill="#0f1a2e" stroke="#4aa3ff" stroke-width="1.8"/>
+            <text x="231" y="72" text-anchor="middle" font-size="14" fill="#eef3fb" font-family="inherit">φ</text>
+            <text x="231" y="87" text-anchor="middle" font-size="9" fill="#6b7c96" font-family="inherit">ступенька</text>
+            <path d="M264 75 L292 75" stroke="#4aa3ff" stroke-width="1.8" fill="none"/>
+            <path d="M288 71 L294 75 L288 79 Z" fill="#4aa3ff"/>
+            <circle cx="304" cy="75" r="11" fill="#22d3ee"/>
+            <text x="304" y="79" text-anchor="middle" font-size="10" fill="#0b1424" font-family="inherit">ŷ</text>
+            <g fill="#6b7c96" font-size="9" font-family="inherit" text-anchor="middle">
+              <text x="150" y="112">сумма</text><text x="231" y="49">активация</text><text x="304" y="104">выход</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Словарик обозначений</h4>
+          <table class="gloss"><tbody>
+            <tr><td>net — вход сумматора</td><td>наше z</td></tr>
+            <tr><td>w₀ — нейрон смещения (вход x₀ = 1)</td><td>наше b</td></tr>
+            <tr><td>φ — функция активации</td><td>ступенька (порог)</td></tr>
+            <tr><td>выход φ</td><td>класс A/B, не вероятность</td></tr>
+            <tr><td>число входов</td><td>в общем случае n; у нас n = 2</td></tr>
+          </tbody></table>
+          <p>Порог: наш перцептрон относит точку к классу B (выход 1) строго при z = w·x + b &gt; 0; при z = 0 точка считается классом A (выход 0). Это классическая ступенчатая (пороговая) функция.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Теорема сходимости</h4>
+          <p>Если данные линейно разделимы, обучение методом коррекции ошибки приходит к решению за конечное время — независимо от начальных весов и порядка примеров. Теорему доказал Розенблатт с Блоком, Джозефом и Кестеном; чистое доказательство и оценку числа ошибок k ≤ R²/γ² дал Новиков (1962). Если линейной разделимости нет, сходимость не гарантируется.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Правило Розенблатта и правило Уидроу–Хоффа</h4>
+          <p>Исходное правило Розенблатта: при ошибке вес меняется на фиксированную величину ±1 по знаку ошибки. Наше правило w += η·ошибка·x — это дельта-правило, оно же правило Уидроу–Хоффа (LMS), предложенное в 1960 для ADALINE: шаг зависит и от направления, и от величины ошибки.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Классификация перцептронов</h4>
+          <p>Различают однослойный перцептрон, перцептрон с одним скрытым (необучаемым) слоем и многослойный; отдельно — сети с прямым распространением и с обратной связью. Наш симулятор — однослойная модель: обучается один слой связей.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Обучающая выборка и обобщение</h4>
+          <p>Плитка «Точность» показывает долю верных ответов на обучающих точках — это не проверка на новых данных. Сто процентов правильных ответов на обучающих точках ещё не значит, что модель научилась: важно, как она ведёт себя на новых данных. Поэтому смотри не только на «Точность», но и на форму границы.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Границы модели: неподъёмные задачи</h4>
+          <p>Часть задач — например, проверка чётности числа входов или узор «шахматная доска» — требует ресурсов, которые растут недопустимо быстро с числом примеров. Для однослойной модели это принципиальная граница, а не недоработка. Тот же мотив уже звучит в объяснении XOR: точки стоят по диагоналям, как шахматная доска, и одной прямой их не разделить.</p>
+        </div>
+
+        <div class="hist-sec">
+          <h4>Что дальше</h4>
+          <p>Ограничение однослойной модели снимает многослойный перцептрон: добавляются обучаемые скрытые слои, а их веса настраивает обратное распространение ошибки (backprop).</p>
+        </div>
+      </section>
+      <button class="cta dclose" id="helpClose" type="button">Закрыть</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="settingsPanel" hidden role="dialog" aria-modal="true" aria-label="Настройки">
+    <div class="dialog">
+      <h2>Настройки</h2>
+      <p>Настройки применяются к модели и сохраняются, пока открыта страница.</p>
+      <div class="control">
+        <label for="setLr">Скорость обучения η <span class="val" id="setLrValue">0.10</span></label>
+        <input id="setLr" type="range" min="0.01" max="0.8" step="0.01" value="0.10">
+      </div>
+      <div class="control">
+        <label for="setMaxEpochs">Максимум эпох <span class="val" id="setEpochValue">60</span></label>
+        <input id="setMaxEpochs" type="number" min="1" max="500" step="1" value="60">
+      </div>
+      <p id="motionNote"></p>
+      <button class="cta dclose" id="settingsClose" type="button">Закрыть</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="stageModal" hidden role="dialog" aria-modal="true" aria-labelledby="stageModalTitle" aria-describedby="stageModalText">
+    <div class="dialog">
+      <h2 id="stageModalTitle"></h2>
+      <p id="stageModalText"></p>
+      <svg id="stageModalSvg" class="neuron-svg" width="120" height="60" viewBox="0 0 120 60" role="img" aria-label="Схема нейрона: входы, сумматор, порог, выход" hidden>
+        <g fill="#6b7c96"><circle cx="3" cy="10" r="1.7"/><circle cx="3" cy="26" r="1.7"/><circle cx="3" cy="42" r="1.7"/></g>
+        <g stroke="#4aa3ff" stroke-width="1.5" fill="none">
+          <path d="M2 10 L30 10"/><path d="M2 26 L30 26"/><path d="M2 42 L30 42"/>
+          <path d="M30 10 L40 26"/><path d="M30 26 L40 26"/><path d="M30 42 L40 26"/>
+          <circle cx="48" cy="26" r="9" fill="#0f1a2e"/>
+          <path d="M57 26 L67 26"/>
+          <rect x="74" y="15" width="26" height="22" rx="6" fill="#0f1a2e"/>
+          <path d="M100 26 L106 26"/>
+        </g>
+        <polyline points="79 33 84 33 84 22 95 22" stroke="#22d3ee" stroke-width="1.6" fill="none"/>
+        <path d="M67 22 L73 26 L67 30 Z" fill="#4aa3ff"/>
+        <path d="M106 23 L111 26 L106 29 Z" fill="#4aa3ff"/>
+        <circle cx="113" cy="26" r="4.5" fill="#22d3ee"/>
+        <text x="48" y="30" text-anchor="middle" font-size="9" fill="#eef3fb" font-family="inherit">Σ</text>
+        <g fill="#6b7c96" font-size="7" text-anchor="middle" font-family="inherit">
+          <text x="48" y="53">сумма</text>
+          <text x="87" y="53">порог</text>
+        </g>
+      </svg>
+      <button class="cta dclose" id="stageOk" type="button">Понятно</button>
+    </div>
+  </div>
+
+  <footer class="copyright" style="flex:0 0 auto;text-align:center;color:var(--dim);font-size:clamp(11px,1.5vh,12px);padding:2px 0 0">© Гарипов Нияз Варисович, 2026</footer>
+</div>
+<noscript><p style="padding:16px">Для работы симулятора нужен включённый JavaScript.</p></noscript>
+
+<script>
+(function(){
+'use strict';
+
+var $ = function(id){ return document.getElementById(id); };
+function setText(id,val){ var e = $(id); if(e) e.textContent = val; }
+var canvas = $('mainCanvas');
+var plotWrap = $('plotWrap');
+var ctx = canvas.getContext('2d');
+var miniB = $('miniBefore'), mbc = miniB.getContext('2d');
+var miniA = $('miniAfter'), mac = miniA.getContext('2d');
+var chart = $('errChart'), cctx = chart.getContext('2d');
+
+var PRESETS = {
+  simple:   [[.12,.82,0],[.22,.68,0],[.31,.76,0],[.28,.54,0],[.42,.63,0],[.16,.45,0],[.58,.27,1],[.72,.42,1],[.82,.63,1],[.69,.79,1],[.91,.51,1],[.55,.59,1]],
+  diagonal: [[.10,.86,0],[.21,.70,0],[.33,.78,0],[.25,.56,0],[.42,.64,0],[.14,.49,0],[.61,.30,1],[.73,.43,1],[.84,.25,1],[.72,.17,1],[.91,.36,1],[.56,.19,1]],
+  noise:    [[.10,.82,0],[.22,.67,0],[.32,.73,0],[.28,.51,0],[.43,.62,0],[.16,.43,0],[.54,.48,1],[.68,.30,1],[.80,.45,1],[.73,.22,1],[.92,.35,1],[.60,.68,1],[.47,.39,0],[.51,.56,1]],
+  xor:      [[.22,.78,0],[.78,.78,1],[.22,.22,1],[.78,.22,0],[.12,.88,0],[.88,.88,1],[.12,.12,1],[.88,.12,0]],
+  and:      [[0,0,0],[0,1,0],[1,0,0],[1,1,1]],
+  or:       [[0,0,0],[0,1,1],[1,0,1],[1,1,1]]
+};
+
+var LESSON_STAGES = ['Смотрю на точку','Угадываю','Проверяю и исправляюсь','Иду дальше'];
+
+/* Пояснения к четырём этапам урока — согласованы с панелью «Как это работает?» */
+var STAGE_MODALS = {
+  1: { title: 'Этап 1. Смотрю на точку',
+       text: 'Перцептрон — модель нервной клетки. В неё приходят сигналы-входы; у каждого важность — сила связи. Сигналы складываются: сумма выше порога — клетка срабатывает, иначе молчит — «да/нет». Здесь w₁, w₂ — силы связей, b — порог, классы A/B — «не сработал/сработал»; перцептрон смотрит на точку.' },
+  2: { title: 'Этап 2. Угадываю',
+       text: 'Перцептрон применяет свои настройки — веса w₁, w₂ и смещение b: z = w₁·x₁ + w₂·x₂ + b, а затем ŷ = step(z). Так появляется его догадка о классе точки. Это шаг 2 панели «Как это работает?» — «Делаю догадку».' },
+  3: { title: 'Этап 3. Проверяю и исправляюсь',
+       text: 'Догадка сравнивается с настоящим классом: ошибка = y − ŷ. Если ошибка не ноль, перцептрон чуть меняет настройки: w += η·ошибка·x и b += η·ошибка. Так он исправляется после промаха — шаги 3–4 панели «Как это работает?».' },
+  4: { title: 'Этап 4. Иду дальше',
+       text: 'Из-за изменения весов разделяющая линия немного двигается, и перцептрон переходит к следующей точке. С каждым шагом он становится точнее — шаги 5–6 панели «Как это работает?».' }
+};
+var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var state = {
+  preset:'simple', points:[], w1:0, w2:0, b:0, lr:0.1, maxEpochs:60, delay:150,
+  epoch:0, step:0, index:0, phase:'idle', running:false, paused:false, mode:'lesson', principle:'supervised',
+  last:null, userGuess:null, history:[], lessonStarted:false,
+  bestW1:0, bestW2:0, bestB:0, bestErr:Infinity,
+  stagesShown:{}, modalOpen:false, modalSavedFocus:null, modalWasPaused:false
+};
+
+var rngSeed = 987654321;
+function rnd(){ rngSeed = (rngSeed*1103515245 + 12345) & 0x7fffffff; return rngSeed/0x7fffffff; }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function r3(v){ return Math.round(v*1000)/1000; }
+function classLabel(v){ return v === 0 ? 'Класс A' : 'Класс B'; }
+function classShapeText(v){ return v === 0 ? '(круг)' : '(ромб)'; }
+/* режим «без учителя» (Хебб) активен только в «Лаборатории»; урок всегда работает «по ошибке» */
+function isHebb(){ return state.mode === 'lab' && state.principle === 'hebb'; }
+
+/* normalized [0,1] presets -> model coordinate frame [-1,1] (same math, aligned to target axes) */
+function conv(list){ return list.map(function(p){ return { x:r3(p[0]*2-1), y:r3(p[1]*2-1), label:p[2] }; }); }
+
+function lineVal(p){ return state.w1*p.x + state.w2*p.y + state.b; }
+function predictPoint(p){ return lineVal(p) > 0 ? 1 : 0; }
+function errors(){ var n=0,i; for(i=0;i<state.points.length;i++){ if(predictPoint(state.points[i]) !== state.points[i].label) n++; } return n; }
+function accuracy(){ return state.points.length ? Math.round(100*(state.points.length-errors())/state.points.length) : null; }
+
+/* ---------- pocket algorithm: keep best-seen weights, never replace current ---------- */
+function resetPocket(){ state.bestW1 = 0; state.bestW2 = 0; state.bestB = 0; state.bestErr = Infinity; }
+function pocketUpdate(){
+  var e = errors();
+  if(e < state.bestErr){ state.bestErr = e; state.bestW1 = state.w1; state.bestW2 = state.w2; state.bestB = state.b; }
+}
+
+/* ---------- canvas geometry: model frame [-1,1] ---------- */
+var PAD = 30;
+function scr(x,y){ var r = canvas.getBoundingClientRect(); return { x: PAD + ((x+1)/2)*(r.width-2*PAD), y: PAD + ((1-y)/2)*(r.height-2*PAD) }; }
+function inv(px,py){ var r = canvas.getBoundingClientRect(); return { x: clamp(2*((px-PAD)/(r.width-2*PAD))-1,-1,1), y: clamp(2*(1-(py-PAD)/(r.height-2*PAD))-1,-1,1) }; }
+
+function highlightIndex(){
+  if(state.mode === 'lab') return state.index;
+  if(state.phase === 'predict') return state.index;
+  if(state.phase === 'reveal' || state.phase === 'update') return state.last ? state.last.i : state.index;
+  return -1;
+}
+function showBoundary(){
+  if(state.mode === 'lab') return true;
+  return state.phase === 'reveal' || state.phase === 'update' || state.phase === 'finished' || state.phase === 'stuck';
+}
+
+function boundarySeg(A,B,C,map){
+  var len = Math.hypot(A,B);
+  if(len < 1e-9) return null;
+  var d = (A*0 + B*0 + C)/(len*len);
+  var x0 = -A*d, y0 = -B*d;
+  var dx = -B/len, dy = A/len, T = 6;
+  return [ map(x0-dx*T, y0-dy*T), map(x0+dx*T, y0+dy*T) ];
+}
+
+function draw(){
+  var r = canvas.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  var W = r.width, H = r.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0c1626'; ctx.fillRect(0,0,W,H);
+  var i, x, y, t = [-1,-0.5,0,0.5,1];
+  for(i=0;i<t.length;i++){
+    x = PAD + ((t[i]+1)/2)*(W-2*PAD);
+    y = PAD + ((1-t[i])/2)*(H-2*PAD);
+    ctx.strokeStyle = t[i] === 0 ? 'rgba(120,170,255,.30)' : 'rgba(80,140,255,.13)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x,PAD); ctx.lineTo(x,H-PAD); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD,y); ctx.lineTo(W-PAD,y); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(120,170,255,.30)'; ctx.strokeRect(PAD, PAD, W-2*PAD, H-2*PAD);
+  if(showBoundary()) drawRegions(W,H);
+  for(i=0;i<state.points.length;i++) drawPoint(state.points[i], i);
+  var hi = highlightIndex();
+  if(hi >= 0 && state.points[hi]) drawPointer(state.points[hi]);
+}
+
+function drawRegions(W,H){
+  var A = state.w1, B = state.w2, C = state.b;
+  if(Math.abs(A) + Math.abs(B) < 1e-9) return;
+  var poly = [[-1,-1],[1,-1],[1,1],[-1,1]], out = [], k;
+  function f(pt){ return A*pt[0] + B*pt[1] + C; }
+  for(k=0;k<poly.length;k++){
+    var cur = poly[k], nxt = poly[(k+1)%poly.length];
+    var fc = f(cur), fn = f(nxt);
+    if(fc > 0) out.push(cur);
+    if((fc > 0) !== (fn > 0)){
+      var tt = fc/(fc-fn);
+      out.push([cur[0]+tt*(nxt[0]-cur[0]), cur[1]+tt*(nxt[1]-cur[1])]);
+    }
+  }
+  if(out.length >= 3){
+    ctx.save(); ctx.beginPath();
+    for(k=0;k<out.length;k++){ var s = scr(out[k][0], out[k][1]); if(k===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y); }
+    ctx.closePath(); ctx.fillStyle = 'rgba(59,157,255,0.07)'; ctx.fill(); ctx.restore();
+  }
+  /* best-found line (pocket): solid amber, distinct from the dashed current boundary */
+  if(isFinite(state.bestErr) && (Math.abs(state.bestW1) + Math.abs(state.bestW2) > 1e-9)){
+    var segB = boundarySeg(state.bestW1, state.bestW2, state.bestB, scr);
+    if(segB){
+      ctx.save();
+      ctx.beginPath(); ctx.rect(PAD,PAD,W-2*PAD,H-2*PAD); ctx.clip();
+      ctx.strokeStyle = '#f5b93d'; ctx.lineWidth = 2.4; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(segB[0].x,segB[0].y); ctx.lineTo(segB[1].x,segB[1].y); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  var seg = boundarySeg(A,B,C, scr);
+  if(seg){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(PAD,PAD,W-2*PAD,H-2*PAD); ctx.clip();
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.setLineDash([9,7]);
+    ctx.beginPath(); ctx.moveTo(seg[0].x,seg[0].y); ctx.lineTo(seg[1].x,seg[1].y); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawPoint(pt, i){
+  var s = scr(pt.x, pt.y);
+  var hi = highlightIndex();
+  if(i === hi){
+    ctx.save();
+    ctx.shadowColor = 'rgba(47,123,255,.9)'; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(s.x,s.y,20,0,Math.PI*2); ctx.strokeStyle = '#4aa3ff'; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.save();
+  if(pt.label === 0){
+    ctx.shadowColor = 'rgba(59,157,255,.9)'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(s.x,s.y,7,0,Math.PI*2); ctx.fillStyle = '#3b9dff'; ctx.fill();
+  } else {
+    ctx.shadowColor = 'rgba(34,211,238,.9)'; ctx.shadowBlur = 12;
+    ctx.translate(s.x,s.y); ctx.rotate(Math.PI/4);
+    ctx.fillStyle = '#22d3ee'; ctx.fillRect(-6,-6,12,12);
+  }
+  ctx.restore();
+}
+
+function drawPointer(pt){
+  /* Указатель-дуга удалён по запросу пользователя: у точки остаётся только плашка,
+     позиция которой ограничена границами canvas, чтобы она не «улетала» за край. */
+  var s = scr(pt.x, pt.y);
+  var r = canvas.getBoundingClientRect();
+  var cap = $('pointCaption');
+  if(!cap) return;
+  cap.hidden = false;
+  var capW = cap.offsetWidth || 140;
+  var capH = cap.offsetHeight || 20;
+  var minLeft = capW/2 + 2;
+  var maxLeft = r.width - capW/2 - 2;
+  cap.style.left = clamp(s.x, minLeft, Math.max(minLeft, maxLeft)) + 'px';
+  cap.style.top = clamp(s.y, capH*1.6 + 2, r.height - 2) + 'px';
+}
+
+function hideCaption(){ var cap = $('pointCaption'); if(cap) cap.hidden = true; }
+
+/* Поле графика вписывается в свою обёртку с сохранением пропорции 1.62:1, но
+   НИКОГДА не меньше 320×220: на низких окнах обёртка вырастает (min-height:220px)
+   и колонка прокручивается, вместо схлопывания поля. На мобильных размер
+   задаёт CSS (ширина 100%). */
+function fitCanvasBox(){
+  if(window.innerWidth > 1080 && plotWrap){
+    var pw = plotWrap.clientWidth, ph = plotWrap.clientHeight;
+    if(pw > 0 && ph > 0){
+      var ar = 1.62, w = pw, h = w/ar;
+      if(h > ph){ h = ph; w = h*ar; }
+      if(w > pw){ w = pw; h = w/ar; }
+      if(w < 320){ w = 320; h = w/ar; }
+      if(h < 220){ h = 220; w = h*ar; }
+      w = Math.round(w); h = Math.round(h);
+      if(canvas.style.width !== w+'px' || canvas.style.height !== h+'px'){
+        canvas.style.width = w+'px'; canvas.style.height = h+'px';
+      }
+    }
+  } else if(canvas.style.width || canvas.style.height){
+    canvas.style.width = ''; canvas.style.height = '';
+  }
+}
+
+function resizeCanvas(){
+  fitCanvasBox();
+  var r = canvas.getBoundingClientRect(); var dpr = window.devicePixelRatio || 1;
+  if(!r.width) return;
+  canvas.width = Math.round(r.width*dpr); canvas.height = Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+
+/* ---------- mini boundary canvases ---------- */
+function miniScrFactory(c, pad){ var r = c.getBoundingClientRect(); return function(x,y){ return { x: pad + ((x+1)/2)*(r.width-2*pad), y: pad + ((1-y)/2)*(r.height-2*pad) }; }; }
+function drawMini(c){
+  var r = c.getBoundingClientRect(); var dpr = window.devicePixelRatio || 1;
+  if(!r.width){ return; }
+  c.width = Math.round(r.width*dpr); c.height = Math.round(r.height*dpr);
+  var g = c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  var W = r.width, H = r.height, pad = 9;
+  g.clearRect(0,0,W,H); g.fillStyle = '#0c1626'; g.fillRect(0,0,W,H);
+  for(var i=0;i<=4;i++){
+    var gx = pad + i*(W-2*pad)/4, gy = pad + i*(H-2*pad)/4;
+    g.strokeStyle = 'rgba(80,140,255,.13)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(gx,pad); g.lineTo(gx,H-pad); g.stroke();
+    g.beginPath(); g.moveTo(pad,gy); g.lineTo(W-pad,gy); g.stroke();
+  }
+  var map = miniScrFactory(c, pad);
+  state.points.forEach(function(p){
+    var s = map(p.x,p.y);
+    if(p.label === 0){ g.beginPath(); g.arc(s.x,s.y,2.4,0,Math.PI*2); g.fillStyle = '#3b9dff'; g.fill(); }
+    else { g.save(); g.translate(s.x,s.y); g.rotate(Math.PI/4); g.fillStyle = '#22d3ee'; g.fillRect(-2.1,-2.1,4.2,4.2); g.restore(); }
+  });
+  var seg = boundarySeg(state._miniW1, state._miniW2, state._miniB, map);
+  if(seg){
+    g.save(); g.beginPath(); g.rect(pad,pad,W-2*pad,H-2*pad); g.clip();
+    g.strokeStyle = '#22d3ee'; g.lineWidth = 1.8; g.setLineDash([5,4]);
+    g.beginPath(); g.moveTo(seg[0].x,seg[0].y); g.lineTo(seg[1].x,seg[1].y); g.stroke();
+    g.restore();
+  }
+}
+function drawMinis(){
+  if(state.last && state.last.applied){
+    state._miniW1 = state.last.oldW1; state._miniW2 = state.last.oldW2; state._miniB = state.last.oldB;
+  } else { state._miniW1 = state.w1; state._miniW2 = state.w2; state._miniB = state.b; }
+  drawMini(miniB);
+  state._miniW1 = state.w1; state._miniW2 = state.w2; state._miniB = state.b;
+  drawMini(miniA);
+}
+
+/* ---------- chart ---------- */
+function drawChart(){
+  var r = chart.getBoundingClientRect();
+  var dpr = window.devicePixelRatio || 1;
+  if(r.width){ chart.width = Math.round(r.width*dpr); chart.height = Math.round(r.height*dpr); } else { return; }
+  cctx.setTransform(dpr,0,0,dpr,0,0);
+  var W = r.width, H = r.height;
+  cctx.clearRect(0,0,W,H); cctx.fillStyle = '#0c1626'; cctx.fillRect(0,0,W,H);
+  cctx.strokeStyle = 'rgba(80,140,255,.18)'; cctx.lineWidth = 1; cctx.strokeRect(1,1,W-2,H-2);
+  if(isHebb()){
+    cctx.fillStyle = '#9fb0c9'; cctx.font = '11px ui-monospace, Menlo, monospace';
+    cctx.fillText('режим Хебба: ошибки по меткам не применяются', 10, 22); return;
+  }
+  var hist = state.history;
+  if(hist.length < 1){
+    cctx.fillStyle = '#9fb0c9'; cctx.font = '11px ui-monospace, Menlo, monospace';
+    cctx.fillText('нет данных — запусти обучение', 10, 22); return;
+  }
+  var maxN = Math.max(1, Math.max.apply(null, hist), state.points.length);
+  var x0 = 8, y0 = 8, w = W-16, h = H-16;
+  cctx.strokeStyle = '#4aa3ff'; cctx.lineWidth = 2; cctx.beginPath();
+  for(var i=0;i<hist.length;i++){
+    var px = hist.length === 1 ? x0 + w/2 : x0 + w*i/(hist.length-1);
+    var py = y0 + h*(1 - hist[i]/maxN);
+    if(i===0) cctx.moveTo(px,py); else cctx.lineTo(px,py);
+  }
+  cctx.stroke();
+  cctx.fillStyle = '#22d3ee';
+  for(var j=0;j<hist.length;j++){
+    var qx = hist.length === 1 ? x0 + w/2 : x0 + w*j/(hist.length-1);
+    var qy = y0 + h*(1 - hist[j]/maxN);
+    cctx.beginPath(); cctx.arc(qx,qy,3,0,Math.PI*2); cctx.fill();
+  }
+  cctx.fillStyle = '#9fb0c9'; cctx.font = '11px ui-monospace, Menlo, monospace';
+  cctx.fillText('макс ' + maxN, 10, H-6);
+}
+
+/* ---------- logging ---------- */
+function addLog(text){
+  var d = document.createElement('div');
+  d.textContent = '• ' + text;
+  $('log').prepend(d);
+}
+
+/* ---------- success banner (state-leak fix preserved) ---------- */
+function hideFinish(){
+  var fb = $('finishBanner');
+  if(fb){ fb.hidden = true; }
+  var ft = $('finishText');
+  if(ft){ ft.textContent = ''; }
+}
+function showFinish(){
+  var fb = $('finishBanner');
+  if(fb){ fb.hidden = false; }
+}
+
+/* ---------- blocking stage modal (one per lesson stage, first entry) ---------- */
+function showStageModal(st){
+  var m = STAGE_MODALS[st];
+  if(!m) return;
+  state.stagesShown[st] = true;
+  state.modalSavedFocus = document.activeElement;
+  state.modalWasPaused = state.paused;
+  if(state.running) state.paused = true;   // автообучение встаёт на паузу за окном
+  state.modalOpen = true;
+  $('stageModalTitle').textContent = m.title;
+  $('stageModalText').textContent = m.text;
+  var svg = $('stageModalSvg');
+  if(svg){ if(st === 1){ svg.removeAttribute('hidden'); } else { svg.setAttribute('hidden',''); } }
+  $('stageModal').hidden = false;
+  var ok = $('stageOk');
+  if(ok) ok.focus();
+}
+
+function closeStageModal(){
+  if(!state.modalOpen) return;
+  state.modalOpen = false;
+  $('stageModal').hidden = true;
+  if(state.running) state.paused = state.modalWasPaused;  // продолжить, если обучение шло
+  var f = state.modalSavedFocus;
+  if(f && typeof f.focus === 'function'){ try{ f.focus(); }catch(e){} }
+}
+
+function maybeShowStageModal(){
+  if(state.mode !== 'lesson' || !state.lessonStarted) return;
+  if(state.modalOpen) return;
+  var st = lessonStage();
+  if(st >= 1 && st <= 4 && !state.stagesShown[st]) showStageModal(st);
+}
+
+/* ---------- model ---------- */
+function resetModel(name){
+  state.preset = name || state.preset;
+  state.points = conv(PRESETS[state.preset]);
+  state.w1 = 0; state.w2 = 0; state.b = 0;
+  state.epoch = 0; state.step = 0; state.index = 0;
+  state.running = false; state.paused = false;
+  state.last = null; state.userGuess = null; state.history = [];
+  state.phase = 'idle'; state.lessonStarted = false;
+  state.stagesShown = {};
+  resetPocket();
+  hideFinish();
+  $('log').innerHTML = '';
+  addLog('Эксперимент «' + state.preset + '» загружен: ' + state.points.length + ' точек');
+}
+
+function startLesson(){
+  if(state.mode !== 'lesson') setMode('lesson');
+  resetModel(state.preset);
+  state.phase = 'predict';
+  state.lessonStarted = true;
+  state.userGuess = null;
+  addLog('Урок начался: смотрю на первую точку');
+  updateSpeech(); render(); draw(); drawChart(); drawMinis();
+}
+
+function selectClass(v){
+  if(state.mode !== 'lesson' || state.phase !== 'predict') return;
+  state.userGuess = v;
+  addLog('Ты выбрал ' + classLabel(v) + ' — нажми «Проверить ответ»');
+  updateSpeech(); render();
+}
+
+function checkAnswer(){
+  if(state.mode !== 'lesson' || state.phase !== 'predict' || state.userGuess === null) return;
+  var p = state.points[state.index];
+  if(!p) return;
+  var z = lineVal(p), pred = z > 0 ? 1 : 0;
+  state.last = { i:state.index, z:z, pred:pred, target:p.label, error:p.label-pred,
+                 oldW1:state.w1, oldW2:state.w2, oldB:state.b,
+                 newW1:state.w1, newW2:state.w2, newB:state.b, applied:false };
+  state.phase = 'reveal';
+  addLog('Моя догадка ' + classLabel(pred) + ' · правильный ответ ' + classLabel(p.label));
+  updateSpeech(); render(); draw(); drawMinis();
+}
+
+/* pure learning step — single source of truth for the math */
+function applyStep(){
+  var p = state.points[state.index];
+  if(!p) return null;
+  var z = state.w1*p.x + state.w2*p.y + state.b;
+  var pred = z > 0 ? 1 : 0;
+  var oldW1 = state.w1, oldW2 = state.w2, oldB = state.b;
+  if(isHebb()){
+    /* Правило Хебба (выбор исполнителя): Δw = η·y·x, Δb = η·y, где y — активность нейрона.
+       Метки классов в обучении не участвуют: члена (target − prediction) нет. */
+    state.w1 += state.lr * pred * p.x;
+    state.w2 += state.lr * pred * p.y;
+    state.b  += state.lr * pred;
+    state.last = { i:state.index, z:z, pred:pred, target:p.label, error:0, hebb:true,
+                   oldW1:oldW1, oldW2:oldW2, oldB:oldB,
+                   newW1:state.w1, newW2:state.w2, newB:state.b, applied:true };
+  } else {
+    var error = p.label - pred;
+    if(error !== 0){
+      state.w1 += state.lr * error * p.x;
+      state.w2 += state.lr * error * p.y;
+      state.b  += state.lr * error;
+    }
+    pocketUpdate();
+    state.last = { i:state.index, z:z, pred:pred, target:p.label, error:error,
+                   oldW1:oldW1, oldW2:oldW2, oldB:oldB,
+                   newW1:state.w1, newW2:state.w2, newB:state.b, applied:true };
+  }
+  state.step++;
+  state.index++;
+  if(state.index >= state.points.length){
+    state.index = 0; state.epoch++;
+    if(isHebb()){
+      addLog('Эпоха ' + state.epoch + ' (Хебб, метки не используются)');
+    } else {
+      state.history.push(errors());
+      addLog('Эпоха ' + state.epoch + ': ошибок ' + errors());
+    }
+  }
+  return state.last;
+}
+
+function doStep(){
+  if(state.running) return;
+  if(state.phase === 'finished' || state.phase === 'stuck') return;
+  if(!state.points.length) return;
+  applyStep();
+  state.phase = 'update';
+  if(isHebb()){
+    addLog('Шаг ' + state.step + ' (Хебб): z=' + state.last.z.toFixed(3) + ', активность y=' + state.last.pred +
+           ', w₁=' + state.w1.toFixed(3) + ', w₂=' + state.w2.toFixed(3) + ', b=' + state.b.toFixed(3));
+  } else {
+    addLog('Шаг ' + state.step + ': z=' + state.last.z.toFixed(3) + ', ошибка=' + state.last.error +
+           ', w₁=' + state.w1.toFixed(3) + ', w₂=' + state.w2.toFixed(3) + ', b=' + state.b.toFixed(3));
+  }
+  updateSpeech(); render(); draw(); drawChart(); drawMinis();
+  if(errors() === 0 && state.epoch > 0 && !isHebb()) finish();
+}
+
+function nextPoint(){
+  state.phase = 'predict';
+  state.last = null; state.userGuess = null;
+  updateSpeech(); render(); draw(); hideCaption();
+}
+
+function finish(){
+  if(isHebb()) return;
+  state.running = false; state.paused = false;
+  state.phase = 'finished';
+  var ft = $('finishText');
+  if(ft) ft.textContent = 'Перцептрон сделал ' + state.step + ' шагов и правильно разделил все ' + state.points.length + ' точек.';
+  showFinish();
+  addLog('Готово: ошибок нет, точность 100%');
+  updateSpeech(); render(); draw();
+}
+
+function stuck(){
+  if(isHebb()) return;
+  state.running = false; state.paused = false;
+  state.phase = 'stuck';
+  hideFinish();
+  addLog('Обучение остановлено: ' + errors() + ' ошибок, набор линейно неразделим');
+  updateSpeech(); render(); draw();
+}
+
+async function autoTrain(){
+  if(state.running) return;
+  if(state.phase === 'finished' || state.phase === 'stuck') return;
+  if(!state.points.length) return;
+  if(isHebb()){ return autoTrainHebb(); }
+  state.running = true; state.paused = state.modalOpen;
+  updateSpeech(); render();
+  var guard = 0, best = Infinity, lastImprove = 0;
+  while(state.running && state.epoch < state.maxEpochs && guard < 100000){
+    guard++;
+    if(state.modalOpen) state.paused = true;
+    if(state.paused){ await sleep(120); continue; }
+    if(state.running){
+      applyStep();
+      var cur = errors();
+      if(cur < best){ best = cur; lastImprove = state.epoch; }
+      render(); draw(); drawChart(); drawMinis();
+      if(cur === 0 && state.epoch > 0){ finish(); return; }
+      if(state.epoch >= 4 && (state.epoch - lastImprove) >= 4){ state.running = false; stuck(); return; }
+    }
+    await sleep(reduced ? 0 : state.delay);
+  }
+  state.running = false;
+  if(errors() !== 0) stuck(); else finish();
+  updateSpeech(); render();
+}
+
+/* обучение без учителя (Хебб): идёт заданное число эпох, без баннера успеха и без «сходимости» */
+async function autoTrainHebb(){
+  state.running = true; state.paused = state.modalOpen;
+  updateSpeech(); render();
+  var guard = 0;
+  while(state.running && state.epoch < state.maxEpochs && guard < 100000){
+    guard++;
+    if(state.modalOpen) state.paused = true;
+    if(state.paused){ await sleep(120); continue; }
+    if(state.running){
+      applyStep();
+      render(); draw(); drawChart(); drawMinis();
+    }
+    await sleep(reduced ? 0 : state.delay);
+  }
+  state.running = false; state.paused = false;
+  state.phase = 'update';
+  addLog('Хебб: обучение остановлено (эпох: ' + state.epoch + ', метки не использовались)');
+  updateSpeech(); render(); drawChart();
+}
+
+/* ---------- speech: one short phrase, no numbers (numbers live in the scene block) ---------- */
+function updateSpeech(){
+  var s;
+  if(state.mode === 'lab'){
+    if(isHebb()){
+      s = state.running
+        ? 'Хебб: подстраиваю веса под сами данные.'
+        : 'Без учителя (Хебб): веса меняются без правильных ответов.';
+      $('mascotSpeech').innerHTML = s;
+      return;
+    }
+    if(state.phase === 'stuck'){
+      s = (state.preset === 'xor')
+        ? 'XOR: точки по диагоналям — одной прямой их не разделить.'
+        : 'В данных шум: одной прямой их идеально не разделить.';
+    } else if(state.phase === 'finished'){
+      s = 'Готово: ошибок нет.';
+    } else {
+      s = 'Меняй η, эпохи и набор — я буду учиться.';
+    }
+    $('mascotSpeech').innerHTML = s;
+    return;
+  }
+  switch(state.phase){
+    case 'idle':
+      s = 'Нажми «Начать» — посмотрю на первую точку.';
+      break;
+    case 'predict':
+      s = (state.userGuess === null)
+        ? 'Как думаешь, какой это класс?'
+        : 'Готов узнать мой ответ?';
+      break;
+    case 'reveal':
+      s = (state.last.error === 0) ? 'Я угадал.' : 'Промах. Сейчас исправлюсь.';
+      break;
+    case 'update':
+      s = 'Смотри: граница сдвинулась.';
+      break;
+    case 'finished':
+      s = 'Все точки разделены.';
+      break;
+    case 'stuck':
+      s = (state.preset === 'xor')
+        ? 'Одной прямой эти точки не разделить.'
+        : 'Одной прямой они не разделятся идеально.';
+      break;
+  }
+  $('mascotSpeech').innerHTML = s;
+}
+
+/* ---------- render ---------- */
+function lessonStage(){
+  switch(state.phase){
+    case 'idle': return 1;
+    case 'predict': return state.userGuess === null ? 1 : 2;
+    case 'reveal': return 3;
+    case 'update': return 4;
+    case 'finished': return 4;
+    case 'stuck': return 4;
+  }
+  return 1;
+}
+
+function render(){
+  var i;
+
+  // stepper
+  var st = lessonStage();
+  $('progNow').textContent = st;
+  var lis = $('lessonSteps').children;
+  for(i=0;i<lis.length;i++){
+    lis[i].className = (i+1 < st) ? 'done' : (i+1 === st ? 'on' : '');
+    if(i+1 === st) lis[i].setAttribute('aria-current','step'); else lis[i].removeAttribute('aria-current');
+  }
+  $('lessonSteps').setAttribute('aria-label', 'Этапы урока. Сейчас: ' + LESSON_STAGES[st-1]);
+
+  // metrics
+  var hebb = isHebb();
+  var started = state.step > 0 || state.epoch > 0;
+  $('mStep').textContent = state.step;
+  $('mErr').textContent = hebb ? '—' : (started ? errors() : '—');
+  var acc = (started && !hebb) ? accuracy() : null;
+  $('mAcc').textContent = acc === null ? '—' : acc + '%';
+  $('mBest').textContent = (!hebb && started && isFinite(state.bestErr)) ? state.bestErr : '—';
+  var ring = $('accRing'); if(ring){ var circ = 2*Math.PI*7.5; ring.setAttribute('stroke-dasharray', circ.toFixed(1)); ring.setAttribute('stroke-dashoffset', (circ*(1-(acc||0)/100)).toFixed(1)); }
+  var stText = 'Готов к уроку';
+  if(state.running) stText = 'Я учусь…';
+  else if(state.phase === 'predict') stText = state.userGuess === null ? 'Смотрю…' : 'Жду проверки';
+  else if(state.phase === 'reveal') stText = 'Сравниваю…';
+  else if(state.phase === 'update') stText = 'Учусь…';
+  else if(state.phase === 'finished') stText = 'Готово';
+  else if(state.phase === 'stuck') stText = 'Не сходится';
+  if(hebb) stText = state.running ? 'Хебб: учусь…' : 'Хебб: без меток';
+  $('mState').textContent = stText;
+
+  // current point: coords live in the single step-scene block; here only visual identity
+  var cur = state.last ? state.points[state.last.i] : state.points[state.index];
+  if(cur){
+    setText('scPoint', '(' + cur.x.toFixed(2) + ', ' + cur.y.toFixed(2) + ')');
+    setText('curPointCaption', cur.label === 0 ? 'Синяя точка (круг).' : 'Голубая точка (ромб).');
+    $('curDot').style.background = cur.label === 0 ? 'radial-gradient(circle at 40% 35%, #8fc6ff, #3b9dff)' : 'radial-gradient(circle at 40% 35%, #9ff2ff, #22d3ee)';
+    $('curDot').style.borderRadius = cur.label === 0 ? '50%' : '6px';
+  } else {
+    setText('scPoint', '—');
+    setText('curPointCaption', 'Точка ещё не выбрана.');
+  }
+
+  // class buttons + CTA
+  var canChoose = state.mode === 'lesson' && state.phase === 'predict';
+  $('ansA').disabled = !canChoose; $('ansB').disabled = !canChoose;
+  $('ansA').setAttribute('aria-pressed', state.userGuess === 0 ? 'true' : 'false');
+  $('ansB').setAttribute('aria-pressed', state.userGuess === 1 ? 'true' : 'false');
+  $('checkAnswer').disabled = !(canChoose && state.userGuess !== null);
+
+  // single scene block near the canvas — the one place explaining "what happened"
+  var revealed = state.phase === 'reveal' || state.phase === 'update' || state.phase === 'finished' || state.phase === 'stuck';
+  var okEl = $('scOk');
+  if(revealed && state.last){
+    setText('scGuess', classLabel(state.last.pred));
+    if(state.last.error === 0){ okEl.textContent = 'верно'; okEl.className = 'sc-ok okv'; }
+    else { okEl.textContent = 'ошибка — нужен ' + classLabel(state.last.target); okEl.className = 'sc-ok badv'; }
+  } else {
+    setText('scGuess', '—');
+    okEl.textContent = '—'; okEl.className = 'sc-ok';
+    hideCaption();
+  }
+  var nextMsg;
+  if(state.mode === 'lab'){
+    nextMsg = 'Запусти обучение и следи за границей и весами.';
+  } else if(state.phase === 'idle'){
+    nextMsg = 'Нажми «Начать» — я посмотрю на первую точку.';
+  } else if(state.phase === 'predict'){
+    nextMsg = state.userGuess === null ? 'Выбери класс A или B.' : 'Нажми «Проверить ответ».';
+  } else if(state.phase === 'reveal'){
+    nextMsg = 'Нажми «Сделать шаг обучения» — веса подстроятся.';
+  } else if(state.phase === 'update'){
+    nextMsg = 'Нажми «Иду дальше» — перейду к следующей точке.';
+  } else if(state.phase === 'finished'){
+    nextMsg = 'Все точки разделены. Можно выбрать другой эксперимент.';
+  } else {
+    nextMsg = 'Идеальной прямой нет — попробуй другой набор.';
+  }
+  setText('scNext', nextMsg);
+
+  // after-answer panel: headings kept, duplicate captions removed (S4)
+  if(revealed && state.last){
+    setText('resGuess', classLabel(state.last.pred));
+    setText('resTarget', classLabel(state.last.target));
+    var rok = $('resOk');
+    if(state.last.error === 0){ rok.textContent = '✓ Верно'; rok.className = 'aval okv'; }
+    else { rok.textContent = '✕ Ошибка'; rok.className = 'aval badv'; }
+    setText('resChange', state.last.applied
+      ? (state.last.error === 0 ? 'Веса без изменений' : 'Веса изменены')
+      : 'Ещё не применял');
+  } else {
+    setText('resGuess', '—'); setText('resTarget', '—');
+    var rok2 = $('resOk'); rok2.textContent = '—'; rok2.className = 'aval';
+    setText('resChange', '—');
+  }
+
+  // weights before -> after (real state)
+  if(state.last && state.last.applied){
+    $('chgW1').textContent = state.last.oldW1.toFixed(3); $('newW1').textContent = state.last.newW1.toFixed(3);
+    $('chgW2').textContent = state.last.oldW2.toFixed(3); $('newW2').textContent = state.last.newW2.toFixed(3);
+    $('chgB').textContent = state.last.oldB.toFixed(3); $('newB').textContent = state.last.newB.toFixed(3);
+  } else {
+    $('chgW1').textContent = state.w1.toFixed(3); $('newW1').textContent = state.w1.toFixed(3);
+    $('chgW2').textContent = state.w2.toFixed(3); $('newW2').textContent = state.w2.toFixed(3);
+    $('chgB').textContent = state.b.toFixed(3); $('newB').textContent = state.b.toFixed(3);
+  }
+
+  // controls
+  var lesson = state.mode === 'lesson';
+  var mainBtn = $('mainAction');
+  mainBtn.hidden = !(lesson && (state.phase === 'idle' || state.phase === 'finished' || state.phase === 'stuck'));
+  mainBtn.textContent = state.phase === 'idle' ? 'Начать' : 'Пройти заново';
+  mainBtn.disabled = state.running;
+
+  var stepBtn = $('stepAction');
+  if(lesson){
+    if(state.phase === 'reveal'){ stepBtn.hidden = false; stepBtn.textContent = 'Сделать шаг обучения'; }
+    else if(state.phase === 'update'){ stepBtn.hidden = false; stepBtn.textContent = 'Иду дальше'; }
+    else stepBtn.hidden = true;
+  } else {
+    stepBtn.hidden = false; stepBtn.textContent = 'Один шаг';
+  }
+  stepBtn.disabled = state.running;
+
+  var autoBtn = $('autoAction');
+  var autoVisible = !lesson || (state.phase === 'predict' || state.phase === 'reveal' || state.phase === 'update');
+  autoBtn.hidden = !autoVisible;
+  autoBtn.textContent = state.running ? (state.paused ? 'Продолжить' : 'Пауза') : (lesson ? 'Обучить до конца' : 'Запустить всё обучение');
+  $('resetAction').disabled = state.running;
+
+  // experiment cards
+  var cards = document.querySelectorAll('.exp-card');
+  Array.prototype.forEach.call(cards, function(b){
+    b.setAttribute('aria-pressed', b.dataset.preset === state.preset ? 'true' : 'false');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.preset'), function(b){
+    b.setAttribute('aria-pressed', b.dataset.preset === state.preset ? 'true' : 'false');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.princ'), function(b){
+    b.setAttribute('aria-pressed', b.dataset.principle === state.principle ? 'true' : 'false');
+  });
+  var hn = $('hebbNote'); if(hn) hn.hidden = !hebb;
+  var mn = $('metricNote'); if(mn) mn.hidden = !hebb;
+
+  // tools disabled while running
+  $('toolAddA').disabled = state.running;
+  $('toolAddB').disabled = state.running;
+  $('toolDelete').disabled = state.running;
+  $('toolClear').disabled = state.running;
+  $('toolGenerate').disabled = state.running;
+
+  // lab readouts
+  $('w1v').textContent = state.w1.toFixed(3);
+  $('w2v').textContent = state.w2.toFixed(3);
+  $('bv').textContent = state.b.toFixed(3);
+  $('lrTable').textContent = state.lr.toFixed(2);
+  $('errTable').textContent = hebb ? '—' : (started ? errors() : '—');
+  $('lrValue').textContent = state.lr.toFixed(2);
+  $('epochValue').textContent = state.maxEpochs;
+  $('delayValue').textContent = state.delay + ' мс';
+  $('setLr').value = state.lr; $('setLrValue').textContent = state.lr.toFixed(2);
+  $('setMaxEpochs').value = state.maxEpochs; $('setEpochValue').textContent = state.maxEpochs;
+  var pz = cur ? lineVal(cur) : 0;
+  $('mathZ').textContent = pz.toFixed(3);
+  $('mathErr').textContent = String(state.last ? state.last.error : 0);
+  $('mathSupervised').hidden = hebb;
+  $('mathHebb').hidden = !hebb;
+  if($('mathZ2')) $('mathZ2').textContent = pz.toFixed(3);
+  if($('mathY2')) $('mathY2').textContent = (pz > 0 ? 1 : 0);
+
+  // caption visibility
+  if(highlightIndex() >= 0 && state.points[highlightIndex()]) drawPointer(state.points[highlightIndex()]);
+  else hideCaption();
+
+  // blocking stage modal on first entry into each lesson stage
+  maybeShowStageModal();
+}
+
+/* ---------- mode + overlays ---------- */
+function setPrinciple(p){
+  if(state.running) return;
+  if(p !== 'hebb' && p !== 'supervised') return;
+  if(state.principle === p) return;
+  state.principle = p;
+  resetModel(state.preset);
+  updateSpeech(); render(); draw(); drawChart(); drawMinis();
+}
+function setMode(m){
+  state.mode = m;
+  $('app').setAttribute('data-mode', m);
+  $('modeLesson').setAttribute('aria-pressed', m === 'lesson' ? 'true' : 'false');
+  $('modeLab').setAttribute('aria-pressed', m === 'lab' ? 'true' : 'false');
+  $('labSection').hidden = (m !== 'lab');
+  if(m === 'lab' && (state.phase === 'idle' || state.phase === 'predict')){ state.phase = 'idle'; state.userGuess = null; }
+  if(state.phase !== 'finished') hideFinish();
+  hideCaption();
+  updateSpeech(); render(); draw(); drawChart(); drawMinis();
+}
+
+function closeOverlays(){
+  $('helpPanel').hidden = true;
+  $('settingsPanel').hidden = true;
+}
+function toggleOverlay(id){
+  var el = $(id);
+  var wasHidden = el.hidden;
+  closeOverlays();
+  if(wasHidden){ el.hidden = false; }
+}
+
+/* ---------- events ---------- */
+$('modeLesson').addEventListener('click', function(){ setMode('lesson'); });
+$('modeLab').addEventListener('click', function(){ setMode('lab'); });
+$('btnHelp').addEventListener('click', function(){ toggleOverlay('helpPanel'); });
+$('btnSettings').addEventListener('click', function(){ toggleOverlay('settingsPanel'); });
+$('helpClose').addEventListener('click', closeOverlays);
+$('settingsClose').addEventListener('click', closeOverlays);
+$('stageOk').addEventListener('click', closeStageModal);
+Array.prototype.forEach.call(document.querySelectorAll('.overlay'), function(ov){
+  ov.addEventListener('click', function(e){ if(e.target === ov) closeOverlays(); });
+});
+
+$('mainAction').addEventListener('click', function(){ if(state.mode !== 'lesson') setMode('lesson'); startLesson(); });
+$('ansA').addEventListener('click', function(){ selectClass(0); });
+$('ansB').addEventListener('click', function(){ selectClass(1); });
+$('checkAnswer').addEventListener('click', function(){ checkAnswer(); });
+$('stepAction').addEventListener('click', function(){
+  if(state.running) return;
+  if(state.mode === 'lesson' && state.phase === 'update'){ nextPoint(); return; }
+  if(state.mode === 'lesson' && state.phase !== 'reveal') return;
+  doStep();
+});
+$('autoAction').addEventListener('click', function(){
+  if(state.running){ state.paused = !state.paused; render(); return; }
+  autoTrain();
+});
+$('resetAction').addEventListener('click', function(){
+  if(state.running) return;
+  resetModel(state.preset); state.userGuess = null;
+  updateSpeech(); render(); draw(); drawChart(); drawMinis();
+});
+
+// experiment cards
+Array.prototype.forEach.call(document.querySelectorAll('.exp-card'), function(b){
+  b.addEventListener('click', function(){
+    if(state.running) return;
+    resetModel(b.dataset.preset);
+    if(state.mode === 'lab'){ updateSpeech(); render(); draw(); drawChart(); drawMinis(); }
+    else { state.phase = 'predict'; state.lessonStarted = true; state.userGuess = null; updateSpeech(); render(); draw(); drawChart(); drawMinis(); }
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll('.preset'), function(b){
+  b.addEventListener('click', function(){
+    if(state.running) return;
+    resetModel(b.dataset.preset);
+    if(state.mode === 'lab'){ updateSpeech(); render(); draw(); drawChart(); drawMinis(); }
+    else { state.phase = 'predict'; state.userGuess = null; updateSpeech(); render(); draw(); drawChart(); drawMinis(); }
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll('.princ'), function(b){
+  b.addEventListener('click', function(){
+    if(state.running) return;
+    setPrinciple(b.dataset.principle);
+  });
+});
+
+// tools
+function addPoint(label){
+  if(state.running) return;
+  var p = { x:r3(-0.9 + rnd()*1.8), y:r3(-0.9 + rnd()*1.8), label:label };
+  state.points.push(p);
+  addLog('Добавлена точка (' + p.x.toFixed(2) + ', ' + p.y.toFixed(2) + ') — ' + classLabel(label));
+  state.phase = 'idle'; state.last = null; state.userGuess = null; hideFinish();
+  resetPocket();
+  updateSpeech(); render(); draw(); drawMinis();
+}
+$('toolAddA').addEventListener('click', function(){ addPoint(0); });
+$('toolAddB').addEventListener('click', function(){ addPoint(1); });
+$('toolDelete').addEventListener('click', function(){
+  if(state.running || !state.points.length) return;
+  var p = state.points.pop();
+  addLog('Удалена точка (' + p.x.toFixed(2) + ', ' + p.y.toFixed(2) + ')');
+  state.index = 0; state.last = null; state.userGuess = null; state.phase = 'idle'; hideFinish();
+  resetPocket();
+  updateSpeech(); render(); draw(); drawMinis();
+});
+$('toolClear').addEventListener('click', function(){
+  if(state.running) return;
+  state.points = []; state.index = 0; state.last = null; state.userGuess = null; state.phase = 'idle'; hideFinish();
+  resetPocket();
+  addLog('Поле очищено');
+  updateSpeech(); render(); draw(); drawMinis();
+});
+$('toolGenerate').addEventListener('click', function(){
+  if(state.running) return;
+  var base = conv(PRESETS[state.preset]);
+  state.points = base.map(function(p){
+    return { x:r3(clamp(p.x + (rnd()-0.5)*0.18, -0.95, 0.95)), y:r3(clamp(p.y + (rnd()-0.5)*0.18, -0.95, 0.95)), label:p.label };
+  });
+  state.w1 = 0; state.w2 = 0; state.b = 0;
+  state.epoch = 0; state.step = 0; state.index = 0; state.history = [];
+  state.last = null; state.userGuess = null; state.phase = 'idle'; hideFinish();
+  state.stagesShown = {};
+  resetPocket();
+  addLog('Сгенерирован новый набор: ' + state.points.length + ' точек');
+  updateSpeech(); render(); draw(); drawChart(); drawMinis();
+});
+
+// lab controls
+$('lr').addEventListener('input', function(e){ state.lr = +e.target.value; render(); });
+$('delay').addEventListener('input', function(e){ state.delay = +e.target.value; render(); });
+$('maxEpochs').addEventListener('input', function(e){ var v = parseInt(e.target.value,10); state.maxEpochs = isNaN(v) ? 60 : clamp(v,1,500); render(); });
+$('setLr').addEventListener('input', function(e){ state.lr = +e.target.value; render(); });
+$('setMaxEpochs').addEventListener('input', function(e){ var v = parseInt(e.target.value,10); state.maxEpochs = isNaN(v) ? 60 : clamp(v,1,500); render(); });
+
+// canvas click adds a point in lab mode (v2 behaviour)
+canvas.addEventListener('click', function(e){
+  if(state.mode !== 'lab' || state.running) return;
+  var r = canvas.getBoundingClientRect();
+  var d = inv(e.clientX - r.left, e.clientY - r.top);
+  var label = state.points.length % 2;
+  state.points.push({ x:r3(d.x), y:r3(d.y), label:label });
+  addLog('Добавлена точка (' + d.x.toFixed(2) + ', ' + d.y.toFixed(2) + ') — ' + classLabel(label));
+  state.last = null; state.userGuess = null; hideFinish();
+  resetPocket();
+  updateSpeech(); render(); draw(); drawMinis();
+});
+
+document.addEventListener('keydown', function(e){
+  if(state.modalOpen){
+    if(e.key === 'Escape'){ e.preventDefault(); closeStageModal(); return; }
+    if(e.key === 'Tab'){ e.preventDefault(); $('stageOk').focus(); return; }
+    return;
+  }
+  if(e.key === 'Escape'){ closeOverlays(); return; }
+  if(state.mode !== 'lesson') return;
+  var k = (e.key || '').toLowerCase();
+  if(state.phase === 'predict'){
+    if(k === 'a' || k === '1' || k === 'ф'){ selectClass(0); }
+    else if(k === 'b' || k === '2' || k === 'и'){ selectClass(1); }
+    else if(k === 'enter'){ if(state.userGuess !== null) checkAnswer(); }
+  }
+});
+
+window.addEventListener('resize', function(){ resizeCanvas(); drawChart(); drawMinis(); });
+if(window.ResizeObserver){
+  var ro = new ResizeObserver(function(){ resizeCanvas(); drawMinis(); });
+  ro.observe(canvas);
+  ro.observe(plotWrap);
+  ro.observe(miniB);
+  ro.observe(miniA);
+}
+
+/* ---------- verification API (real model state) ---------- */
+window.PLAB = {
+  state: state,
+  predict: lineVal,
+  predictPoint: predictPoint,
+  errors: errors,
+  accuracy: accuracy,
+  applyStep: applyStep,
+  selectClass: selectClass,
+  checkAnswer: checkAnswer,
+  setPrinciple: setPrinciple,
+  isHebb: isHebb,
+  PRESETS: PRESETS
+};
+
+/* ---------- init ---------- */
+if(reduced){ $('motionNote').textContent = 'Обнаружено предпочтение «уменьшить движение» — анимации отключены.'; }
+else { $('motionNote').textContent = 'Анимации включены (система не запрашивала их отключение).'; }
+resetModel('simple');
+state.phase = 'idle';
+render();
+resizeCanvas();
+drawChart();
+drawMinis();
+})();
+</script>
+</body>
+</html>
